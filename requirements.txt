@@ -1,0 +1,4 @@
+geocoder
+ollama
+requests
+rich
