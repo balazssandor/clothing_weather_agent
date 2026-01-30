@@ -2,6 +2,8 @@
 
 AI-powered weather forecast and clothing recommendations for ski touring in Romanian mountains.
 
+Note: site publishing is not happening actually from here at the moment. Also LLM invocation was interchanged with lower resource solution that worked better.
+
 ## 🎯 What It Does
 
 1. **Fetches tomorrow's weather** from Open-Meteo API for mountain locations
