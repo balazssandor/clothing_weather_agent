@@ -2,3 +2,4 @@ geocoder
 ollama
 requests
 rich
+boto3

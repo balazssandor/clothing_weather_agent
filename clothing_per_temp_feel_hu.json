@@ -1,0 +1,210 @@
+{
+  "equipment": {
+    "mandatory_safety_kit_3_4": [
+      "Lavina-jeladó (3 antennás, modern)",
+      "Lavinaszonda (240–300 cm)",
+      "Lavinalapát (fém pengéjű)",
+      "Lavina légzsák hátizsák (ajánlott 4. elem)"
+    ],
+    "ski_touring_system": [
+      "Túrasíléc",
+      "Túrakötés",
+      "Szőrme (illesztett, jó állapotú ragasztó)",
+      "Sí kampók (harscheisen)",
+      "Állítható botok (hópelyhkosárkákkal)"
+    ],
+    "pack_carry": [
+      "Túrahátizsák (30–40L jellemző)",
+      "Sízőhordozó rendszer (A-keret vagy átlós)",
+      "Sisakhordozás",
+      "Vízhatlan zsák vagy hátizsák bélés (viharokhoz/nedves hó)"
+    ],
+    "navigation_communication": [
+      "Offline térképek telefonon vagy GPS eszközön",
+      "Papír térkép",
+      "Iránytű",
+      "Telefon (teljesen feltöltve)",
+      "Töltőbank",
+      "Fejlámpa"
+    ],
+    "technical_optional_by_terrain": [
+      "Sítúra sisak",
+      "Csizma kampók (ha meredek/jeges terep lehetséges)",
+      "Jégcsákány (ha meredek/kemény vagy kitett terep lehetséges)"
+    ],
+    "emergency_repair": [
+      "Elsősegély készlet",
+      "Vészhelyzeti bivak vagy hőtakaró",
+      "Javító készlet (multitool, síszíj, ragasztószalag, kötés/csizma tartalékok szükség szerint)",
+      "Síp",
+      "Tűzgyújtó (viharálló)"
+    ],
+    "food_hydration": [
+      "Magas kalóriájú étel + snackek",
+      "Elektrolitok",
+      "Szigetelt vizespalack(ok) (előnyben részesített hidegben)",
+      "Termosz (opcionális)"
+    ]
+  },
+
+  "clothing": {
+    "rules": [
+      "Egy szélálló külső réteg MINDIG benne van (minimum szélálló héjdzseki; gyakran hardshell).",
+      "Rétegeket dinamikusan állítsa az erőfeszítés szerint: hűvösen kezdje, korán szellőztesse, szigetelést adjon megállásokhoz.",
+      "Vigyen legalább egy száraz tartalék párat a kézhez és egy extra szigetelő darabot váratlan késedelmekhez."
+    ],
+
+    "always_carried_core_items": {
+      "windstopper_outer_layer": [
+        "Szélálló héjdzseki (windstopper) VAGY vízálló hardshell dzseki (alapból szélálló)"
+      ],
+      "hands": [
+        "Aláöltözet kesztyű",
+        "Szigetelt vízálló kesztyűk vagy ujjatlan kesztyűk",
+        "Tartalék kesztyűk (száraz)"
+      ],
+      "head_face_eyes": [
+        "Sisak",
+        "Vékony sapka (sisak alá illeszkedik)",
+        "Nyakmelegítő / buff",
+        "Napszemüveg (UV400)",
+        "Védőszemüveg (vihar/gyenge fény lencsével)"
+      ],
+      "legs": [
+        "Túranadrág (softshell vagy hibrid)",
+        "Szélálló fedőnadrág vagy hardshell nadrág (hordva amikor a körülmények megkövetelik)"
+      ],
+      "feet": [
+        "Túracsizma",
+        "Vékony sízokniak (merino/szintetikus)"
+      ]
+    },
+
+    "temperature_feel_intervals_celsius": [
+      {
+        "range": "below_-20",
+        "base_layer": {
+          "torso": "Nehéz merino/szintetikus hosszú ujjú",
+          "legs": "Nehéz merino/szintetikus alsónadrág"
+        },
+        "mid_layers": {
+          "active": "Polár vagy aktív szigetelő dzseki",
+          "static_extra": "Összehajtható pehely/szintetikus pufi (megállásokhoz/vészhelyzethez)"
+        },
+        "outer_layers": {
+          "required_windstopper": "Szélálló hardshell dzseki (előnyben részesített) vagy szélálló héjdzseki",
+          "legs": "Szélálló hardshell nadrág vagy szélálló fedőnadrág"
+        },
+        "accessories": {
+          "hands": "Ujjatlan kesztyű előnyben részesített + aláöltözet; száraz tartalék pár kötelező",
+          "head_face": "Meleg sapka + buff; védőszemüveg ajánlott",
+          "notes": "Fagyás veszélye: fedje le az összes bőrt; korlátozza a hosszú megállásokat; tartsa a szigetelést elérhető helyen."
+        }
+      },
+      {
+        "range": "-20_to_-10",
+        "base_layer": {
+          "torso": "Meleg merino/szintetikus hosszú ujjú",
+          "legs": "Közepesen meleg alsónadrág"
+        },
+        "mid_layers": {
+          "active": "Könnyű polár vagy aktív szigetelés",
+          "static_extra": "Összehajtható pufi ajánlott"
+        },
+        "outer_layers": {
+          "required_windstopper": "Szélálló héjdzseki VAGY hardshell dzseki",
+          "legs": "Szélálló nadrág (softshell OK ha valóban szélálló) + vigyen hardshellt ha a hó sok/nedves"
+        },
+        "accessories": {
+          "hands": "Szigetelt kesztyűk vagy ujjatlan kesztyűk + tartalék",
+          "head_face": "Buff + vékony sapka; védőszemüveg ha szél/hó",
+          "notes": "Enyhén hűvösen kezdje; korán szellőztessen hogy megelőzze az izzadság fagyását később."
+        }
+      },
+      {
+        "range": "-10_to_0",
+        "base_layer": {
+          "torso": "Közepes merino/szintetikus",
+          "legs": "Könnyű vagy közepes alsónadrág (opcionális erőfeszítéstől függően)"
+        },
+        "mid_layers": {
+          "active": "Könnyű polár (gyakran elég)",
+          "static_extra": "Összehajtható pufi opcionális de ajánlott hosszú szünetekhez"
+        },
+        "outer_layers": {
+          "required_windstopper": "Szélálló héjdzseki MINDIG (hordva; gyakran viselve gerincen/lejtőn)",
+          "legs": "Szélálló túranadrág; vigyen hardshell nadrágot ha csapadék várható"
+        },
+        "accessories": {
+          "hands": "Aláöltözet + szigetelt kesztyűk; tartalék ajánlott",
+          "head_face": "Vékony sapka/fejpánt + buff; védőszemüveg ha hó/szél",
+          "notes": "Tipikus túra zóna: felmászás légáteresztő rétegekben, windstopperet adjon átmenetekhez és lejtőkhöz."
+        }
+      },
+      {
+        "range": "0_to_10",
+        "base_layer": {
+          "torso": "Könnyű izzadságelnyelő alap",
+          "legs": "Gyakran semmi; vagy vékony harisnya ha hideg érzékeny"
+        },
+        "mid_layers": {
+          "active": "Opcionális vékony polár",
+          "static_extra": "Könnyű pufi ajánlott ha távoli/hosszú túra"
+        },
+        "outer_layers": {
+          "required_windstopper": "Szélálló héjdzseki MINDIG (hordva; viselve amikor kitett vagy lejt)",
+          "legs": "Légáteresztő túranadrág; vigyen esőálló hardshellt ha nedves csapadék lehetséges"
+        },
+        "accessories": {
+          "hands": "Aláöltözet kesztyű gyakran elég emelkedőn; szigetelt pár ereszkedéshez",
+          "head_face": "Napkalap/sisak + napszemüveg; védőszemüveg csomagolva ha hó lehetséges",
+          "notes": "Túlmelegedés gyakori: előnyben részesítse a szellőzést; a szél gyorsan lehűt amikor megáll."
+        }
+      },
+      {
+        "range": "above_10",
+        "base_layer": {
+          "torso": "Nagyon könnyű alap (vagy rövid ujjú) + napvédelem",
+          "legs": "Könnyű túranadrág/rövidnadrág környezettől és szabályzattól függően"
+        },
+        "mid_layers": {
+          "active": "Általában semmi",
+          "static_extra": "Vékony vészhelyzeti szigetelés ajánlott hátizsákban"
+        },
+        "outer_layers": {
+          "required_windstopper": "Összehajtható szélálló héjdzseki MINDIG (kötelező még meleg időben is)",
+          "legs": "Könnyű szélálló nadrág; opcionális hardshell ha eső valószínű"
+        },
+        "accessories": {
+          "hands": "Vékony kesztyű opcionális; tartson melegebb párat magas gerincekhez/lejtőkhöz",
+          "head_face": "Napkalap + napvédő krém; napszemüveg kötelező",
+          "notes": "Kiszáradás és napfény-kitettség elsődleges kockázatok; windstopper még mindig létfontosságú kitett lejtőkhöz."
+        }
+      }
+    ],
+
+    "precipitation_overrides": {
+      "none_or_dry_snow": {
+        "jacket_choice": "Szélálló héjdzseki elegendő lehet ha nincs nedves csapadék; hardshell még mindig előnyben részesített viharokhoz/kitettséghez.",
+        "pants_choice": "Szélálló túranadrág; fedőnadrágot csak szükség esetén adjon."
+      },
+      "heavy_snow": {
+        "required_additions": [
+          "Vízálló hardshell dzseki (még mindig szélálló)",
+          "Vízálló nadrág vagy fedőnadrág",
+          "Védőszemüveg (vihar lencsével)"
+        ],
+        "notes": "Hóterhelés + nedvességkezelés: tartsa a szigetelést szárazon; használjon szellőzőket."
+      },
+      "wet_snow_or_rain": {
+        "required_additions": [
+          "Teljesen vízálló hardshell dzseki (szélálló)",
+          "Teljesen vízálló nadrág",
+          "Vízálló kesztyűk/ujjatlan kesztyűk + száraz tartalék pár",
+          "Hátizsák bélés vagy vízálló zsákok szigeteléshez"
+        ],
+        "notes": "Legmagasabb hipotermia kockázat; kerülje a hosszú kitett megállásokat; tartson egy szigetelő darabot védve és szárazon."
+      }
+    }
+  }
+}

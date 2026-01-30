@@ -1,0 +1,170 @@
+[
+  {
+    "body_zone": "Head",
+    "must_haves": [
+      "Ski helmet (touring-certified, adjustable ventilation)",
+      "Warm hat or thin beanie (fits under helmet)",
+      "Buff or neck gaiter",
+      "Ski goggles (low-light + sunny lenses)",
+      "Sunglasses (UV400, category 3–4)",
+      "Sunscreen (SPF 30–50)",
+      "Lip balm with SPF"
+    ],
+    "weather_notes": {
+      "cold_stormy": "Full helmet + goggles mandatory; exposed skin risks frostbite; sunglasses not usable.",
+      "sunny_warm": "Helmet ventilation critical; sunglasses often replace goggles.",
+      "windy": "Goggles essential; buff prevents windburn.",
+      "whiteout": "High-contrast goggle lens critical; navigation more difficult."
+    }
+  },
+  {
+    "body_zone": "Upper Body (Torso)",
+    "must_haves": [
+      "Base layer (merino or synthetic, moisture-wicking)",
+      "Mid layer insulation (fleece or light down)",
+      "Softshell touring jacket (breathable)",
+      "Hardshell jacket (waterproof, windproof)",
+      "Avalanche transceiver harness or pocket"
+    ],
+    "weather_notes": {
+      "cold_stormy": "Hardshell + insulation required; stopping for long breaks risky.",
+      "sunny_warm": "Often skinning in base layer; hardshell stays in pack.",
+      "windy": "Windproof layer critical even if temperatures mild.",
+      "wet_snow": "Hardshell mandatory; softshell alone insufficient."
+    }
+  },
+  {
+    "body_zone": "Hands & Arms",
+    "must_haves": [
+      "Liner gloves (thin)",
+      "Insulated ski gloves or mittens (waterproof)",
+      "Spare gloves (critical safety item)",
+      "Wrist straps or leashes (optional)"
+    ],
+    "weather_notes": {
+      "cold_stormy": "Mittens preferred; exposed hands quickly lose dexterity.",
+      "sunny_warm": "Liner gloves often sufficient for ascent.",
+      "wet_conditions": "Spare dry gloves essential.",
+      "windy": "Insulated gloves required even at moderate temperatures."
+    }
+  },
+  {
+    "body_zone": "Lower Body (Legs)",
+    "must_haves": [
+      "Base layer bottoms",
+      "Softshell touring pants (breathable, stretch)",
+      "Hardshell pants (waterproof, full side zips)",
+      "Belt or suspenders"
+    ],
+    "weather_notes": {
+      "cold_stormy": "Layering critical; immobility increases heat loss.",
+      "sunny_warm": "Often no base layer needed during ascent.",
+      "wet_snow": "Hardshell pants required.",
+      "deep_powder": "Proper gaiters or powder cuffs necessary."
+    }
+  },
+  {
+    "body_zone": "Feet",
+    "must_haves": [
+      "Ski touring boots (walk mode, tech inserts)",
+      "Ski socks (merino or synthetic, thin)",
+      "Spare socks (optional but recommended)",
+      "Boot crampons (if compatible)"
+    ],
+    "weather_notes": {
+      "cold": "Thin socks still preferred; circulation more important than thickness.",
+      "spring_conditions": "Wet feet risk blisters; sock choice critical.",
+      "icy_terrain": "Boot crampons may be mandatory."
+    }
+  },
+  {
+    "body_zone": "Skis & Snow Contact",
+    "must_haves": [
+      "Ski touring skis",
+      "Climbing skins (properly fitted)",
+      "Ski crampons (harscheisen)",
+      "Ski poles (adjustable length)",
+      "Pole baskets (powder size)"
+    ],
+    "weather_notes": {
+      "icy": "Ski crampons essential; skin traction insufficient.",
+      "deep_powder": "Wide skis improve flotation but increase effort.",
+      "wet_snow": "Skin glue failure possible; backup skin wax recommended.",
+      "wind_scoured": "Edge control critical; lightweight skis may struggle."
+    }
+  },
+  {
+    "body_zone": "Backpack & Carry System",
+    "must_haves": [
+      "Ski touring backpack (30–40L)",
+      "Ski carry system (A-frame or diagonal)",
+      "Helmet carry",
+      "Ice axe loop",
+      "Hydration system or insulated bottle"
+    ],
+    "weather_notes": {
+      "cold": "Insulated bottles required; hydration hoses freeze.",
+      "technical_routes": "Secure ski carry essential.",
+      "long_days": "Proper weight distribution critical for fatigue management."
+    }
+  },
+  {
+    "body_zone": "Avalanche Safety",
+    "must_haves": [
+      "Avalanche transceiver (modern, 3-antenna)",
+      "Probe (240–300 cm)",
+      "Shovel (metal blade)",
+      "Airbag backpack (optional but recommended)"
+    ],
+    "weather_notes": {
+      "fresh_snow": "Avalanche risk elevated; conservative terrain choice required.",
+      "wind_loading": "Slab formation likely; safety gear non-negotiable.",
+      "spring": "Wet slides possible; timing critical."
+    }
+  },
+  {
+    "body_zone": "Navigation & Communication",
+    "must_haves": [
+      "Map (paper)",
+      "Compass",
+      "GPS device or smartphone with offline maps",
+      "Fully charged phone",
+      "Power bank",
+      "Headlamp (with spare batteries)"
+    ],
+    "weather_notes": {
+      "whiteout": "GPS and compass essential; visual navigation unreliable.",
+      "short_days": "Headlamp mandatory even for day tours.",
+      "remote_areas": "No cell coverage; self-navigation required."
+    }
+  },
+  {
+    "body_zone": "Safety & Emergency",
+    "must_haves": [
+      "First aid kit",
+      "Emergency bivy or space blanket",
+      "Repair kit (multi-tool, ski straps, duct tape)",
+      "Whistle",
+      "Fire starter"
+    ],
+    "weather_notes": {
+      "any_conditions": "Injury or delay always possible; rescue may be slow.",
+      "cold": "Hypothermia risk increases rapidly when stopped.",
+      "storm": "Shelter and repair capability critical."
+    }
+  },
+  {
+    "body_zone": "Food & Energy",
+    "must_haves": [
+      "High-calorie snacks",
+      "Lunch or substantial food",
+      "Electrolytes",
+      "Thermos with warm drink (optional)"
+    ],
+    "weather_notes": {
+      "cold": "Food freezes; keep close to body.",
+      "long_tours": "Under-fueling leads to poor decisions.",
+      "warm_weather": "Hydration more critical than calories."
+    }
+  }
+]

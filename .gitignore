@@ -1,2 +1,6 @@
 locations.json
 __pycache__/
+mountain_locations.json
+.aws/
+*.pem
+.env

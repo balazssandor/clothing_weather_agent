@@ -320,6 +320,30 @@ def get_tomorrow_weather_report(
         latitude, longitude, 0, 23, timeout_seconds=timeout_seconds
     )
 
+def wind_chill_with_gusts(temp_c, wind_kmh, gust_kmh):
+    # Base wind chill
+    if temp_c > 10 or wind_kmh < 4.8:
+        base = temp_c
+    else:
+        v16 = wind_kmh ** 0.16
+        base = (
+            13.12
+            + 0.6215 * temp_c
+            - 11.37 * v16
+            + 0.3965 * temp_c * v16
+        )
+
+    # Gust adjustment
+    if gust_kmh is None or temp_c > 5:
+        return round(base, 1)
+
+    delta_v = gust_kmh - wind_kmh
+    if delta_v < 5:
+        return round(base, 1)
+
+    gust_penalty = min(2.0, 0.1 * (delta_v ** 0.5))
+    return round(base - gust_penalty, 1)
+
 
 if __name__ == "__main__":
     # Cheile Turzii, Romania

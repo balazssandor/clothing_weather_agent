@@ -1,1 +1,0 @@
-NPS_API_KEY = ""

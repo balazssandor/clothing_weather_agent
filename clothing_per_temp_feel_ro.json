@@ -1,0 +1,210 @@
+{
+  "equipment": {
+    "mandatory_safety_kit_3_4": [
+      "Detector de avalanșă (3 antene, modern)",
+      "Sondă de avalanșă (240–300 cm)",
+      "Lopată de avalanșă (lamă metalică)",
+      "Rucsac cu airbag pentru avalanșe (al 4-lea element recomandat)"
+    ],
+    "ski_touring_system": [
+      "Schiuri de tură",
+      "Legături de tură",
+      "Piei de focă (ajustate, clei în stare bună)",
+      "Colțari pentru schiuri (harscheisen)",
+      "Bețe reglabile (cu farfurii pentru zăpadă pufoasă)"
+    ],
+    "pack_carry": [
+      "Rucsac de tură (30–40L tipic)",
+      "Sistem de transport schiuri (A-frame sau diagonal)",
+      "Port cască",
+      "Sac impermeabil sau căptușeală rucsac (pentru furtuni/zăpadă umedă)"
+    ],
+    "navigation_communication": [
+      "Hărți offline pe telefon sau dispozitiv GPS",
+      "Hartă hârtie",
+      "Busolă",
+      "Telefon (complet încărcat)",
+      "Baterie externă",
+      "Lampă frontală"
+    ],
+    "technical_optional_by_terrain": [
+      "Cască de schi-tură",
+      "Colțari pentru bocanci (dacă e posibil teren abrupt/înghețat)",
+      "Piolet (dacă e posibil teren abrupt/ferm sau expus)"
+    ],
+    "emergency_repair": [
+      "Trusă de prim ajutor",
+      "Bivuac de urgență sau pătură termică",
+      "Kit de reparații (multitool, curele schi, bandă adezivă, piese schimb legături/bocanci)",
+      "Fluier",
+      "Aprinzător de foc (rezistent la furtună)"
+    ],
+    "food_hydration": [
+      "Mâncare hipercalorică + gustări",
+      "Electroliți",
+      "Sticlă(e) izolată de apă (preferată la frig)",
+      "Termos (opțional)"
+    ]
+  },
+
+  "clothing": {
+    "rules": [
+      "Un strat exterior anti-vânt este ÎNTOTDEAUNA inclus (minim o jachetă shell anti-vânt; adesea o hardshell).",
+      "Ajustați straturile dinamic cu efortul: începeți răcoros, ventilați devreme, adăugați izolație la opriri.",
+      "Purtați cel puțin o pereche de rezervă uscată pentru mâini și o piesă extra de izolație pentru întârzieri neașteptate."
+    ],
+
+    "always_carried_core_items": {
+      "windstopper_outer_layer": [
+        "Jachetă shell anti-vânt (windstopper) SAU jachetă hardshell impermeabilă (anti-vânt implicit)"
+      ],
+      "hands": [
+        "Mănuși subțiri (liner)",
+        "Mănuși sau mănuși tip mănușă izolate impermeabile",
+        "Mănuși de rezervă (uscate)"
+      ],
+      "head_face_eyes": [
+        "Cască",
+        "Căciulă subțire (se potrivește sub cască)",
+        "Bandană / buff pentru gât",
+        "Ochelari de soare (UV400)",
+        "Ochelari de protecție (lentilă pentru furtună/lumină slabă)"
+      ],
+      "legs": [
+        "Pantaloni de tură (softshell sau hibrid)",
+        "Pantalon suprapus anti-vânt sau pantalon hardshell (purtat când condițiile o cer)"
+      ],
+      "feet": [
+        "Bocanci de tură",
+        "Șosete subțiri de schi (merino/sintetice)"
+      ]
+    },
+
+    "temperature_feel_intervals_celsius": [
+      {
+        "range": "below_-20",
+        "base_layer": {
+          "torso": "Mânecă lungă merino/sintetică groasă",
+          "legs": "Pantaloni de bază merino/sintetici groși"
+        },
+        "mid_layers": {
+          "active": "Jachetă fleece sau izolație activă",
+          "static_extra": "Jachetă puf/sintetică pliabilă (pentru opriri/urgențe)"
+        },
+        "outer_layers": {
+          "required_windstopper": "Jachetă hardshell anti-vânt (preferată) sau jachetă shell anti-vânt",
+          "legs": "Pantaloni hardshell anti-vânt sau pantalon suprapus anti-vânt"
+        },
+        "accessories": {
+          "hands": "Mănuși tip mănușă preferate + subțiri; pereche de rezervă uscată obligatorie",
+          "head_face": "Căciulă caldă + buff; ochelari protecție recomandați",
+          "notes": "Risc de degerare: acoperiți toată pielea; limitați opririle lungi; păstrați izolația accesibilă."
+        }
+      },
+      {
+        "range": "-20_to_-10",
+        "base_layer": {
+          "torso": "Mânecă lungă merino/sintetică caldă",
+          "legs": "Pantaloni de bază mediu-calzi"
+        },
+        "mid_layers": {
+          "active": "Fleece ușor sau izolație activă",
+          "static_extra": "Jachetă pliabilă recomandată"
+        },
+        "outer_layers": {
+          "required_windstopper": "Jachetă shell anti-vânt SAU jachetă hardshell",
+          "legs": "Pantalon anti-vânt (softshell OK dacă cu adevărat anti-vânt) + purtați hardshell dacă zăpada e abundentă/umedă"
+        },
+        "accessories": {
+          "hands": "Mănuși izolate sau tip mănușă + rezervă",
+          "head_face": "Buff + căciulă subțire; ochelari protecție dacă vânt/zăpadă",
+          "notes": "Începeți ușor răcoros; ventilați devreme pentru a preveni înghețul transpirației."
+        }
+      },
+      {
+        "range": "-10_to_0",
+        "base_layer": {
+          "torso": "Merino/sintetic mediu",
+          "legs": "Pantaloni ușori până la medii (opțional în funcție de efort)"
+        },
+        "mid_layers": {
+          "active": "Fleece ușor (adesea suficient)",
+          "static_extra": "Jachetă pliabilă opțională dar recomandată pentru pauze lungi"
+        },
+        "outer_layers": {
+          "required_windstopper": "Jachetă shell anti-vânt ÎNTOTDEAUNA (purtată; adesea purtată pe creastă/coborâre)",
+          "legs": "Pantaloni de tură rezistenți la vânt; purtați pantaloni hardshell dacă se preconizează precipitații"
+        },
+        "accessories": {
+          "hands": "Liner + mănuși izolate; rezervă recomandată",
+          "head_face": "Căciulă subțire/bandă cap + buff; ochelari protecție dacă zăpadă/vânt",
+          "notes": "Zonă tipică de tură: urcați în straturi respirabile, adăugați windstopper pentru tranziții și coborâri."
+        }
+      },
+      {
+        "range": "0_to_10",
+        "base_layer": {
+          "torso": "Bază ușoară care absoarbe transpirația",
+          "legs": "Adesea nimic; sau colanți subțiri dacă vă este frig ușor"
+        },
+        "mid_layers": {
+          "active": "Fleece subțire opțional",
+          "static_extra": "Jachetă ușoară recomandată dacă tură îndepărtată/lungă"
+        },
+        "outer_layers": {
+          "required_windstopper": "Jachetă shell anti-vânt ÎNTOTDEAUNA (purtată; purtată când e expus sau coborâre)",
+          "legs": "Pantaloni de tură respirabili; purtați hardshell capabil de ploaie dacă precipitații umede posibile"
+        },
+        "accessories": {
+          "hands": "Mănuși liner adesea suficiente la urcuș; pereche izolată pentru coborâre",
+          "head_face": "Pălărie de soare/cască + ochelari de soare; ochelari protecție împachetați dacă e posibilă zăpada",
+          "notes": "Supraîncălzirea este frecventă: prioritizați ventilarea; vântul poate răci rapid când vă opriți."
+        }
+      },
+      {
+        "range": "above_10",
+        "base_layer": {
+          "torso": "Bază foarte ușoară (sau mânecă scurtă) + protecție solară",
+          "legs": "Pantaloni de tură ușori/șorturi în funcție de mediu și politică"
+        },
+        "mid_layers": {
+          "active": "Niciunul de obicei",
+          "static_extra": "Izolație de urgență subțire recomandată în rucsac"
+        },
+        "outer_layers": {
+          "required_windstopper": "Jachetă shell anti-vânt pliabilă ÎNTOTDEAUNA (obligatorie chiar și în vreme caldă)",
+          "legs": "Pantaloni ușori rezistenți la vânt; hardshell opțional dacă e probabil ploaie"
+        },
+        "accessories": {
+          "hands": "Mănuși subțiri opționale; păstrați o pereche mai caldă pentru creste înalte/coborâri",
+          "head_face": "Pălărie de soare + cremă solară; ochelari de soare obligatorii",
+          "notes": "Deshidratarea și expunerea la soare devin riscuri primare; windstopper încă vital pentru coborâri expuse."
+        }
+      }
+    ],
+
+    "precipitation_overrides": {
+      "none_or_dry_snow": {
+        "jacket_choice": "Jachetă shell anti-vânt poate fi suficientă dacă nu sunt precipitații umede; hardshell încă preferată pentru furtuni/expunere.",
+        "pants_choice": "Pantaloni de tură anti-vânt; adăugați pantalon suprapus doar dacă e necesar."
+      },
+      "heavy_snow": {
+        "required_additions": [
+          "Jachetă hardshell impermeabilă (încă anti-vânt)",
+          "Pantaloni impermeabili sau pantaloni suprapuși",
+          "Ochelari de protecție (lentilă furtună)"
+        ],
+        "notes": "Încărcătură de zăpadă + gestionare umiditate: mențineți izolația uscată; folosiți ventilații."
+      },
+      "wet_snow_or_rain": {
+        "required_additions": [
+          "Jachetă hardshell complet impermeabilă (anti-vânt)",
+          "Pantaloni complet impermeabili",
+          "Mănuși/mănuși tip mănușă impermeabile + pereche de rezervă uscată",
+          "Căptușeală rucsac sau saci impermeabili pentru izolație"
+        ],
+        "notes": "Risc maxim de hipotermie; evitați opririle lungi expuse; păstrați o piesă de izolație protejată și uscată."
+      }
+    }
+  }
+}

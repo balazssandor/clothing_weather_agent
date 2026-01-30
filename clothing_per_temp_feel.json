@@ -1,0 +1,210 @@
+{
+  "equipment": {
+    "mandatory_safety_kit_3_4": [
+      "Avalanche transceiver (3-antenna, modern)",
+      "Avalanche probe (240–300 cm)",
+      "Avalanche shovel (metal blade)",
+      "Avalanche airbag backpack (recommended 4th element)"
+    ],
+    "ski_touring_system": [
+      "Touring skis",
+      "Touring bindings",
+      "Climbing skins (fitted, glue in good condition)",
+      "Ski crampons (harscheisen)",
+      "Adjustable poles (with powder baskets)"
+    ],
+    "pack_carry": [
+      "Touring backpack (30–40L typical)",
+      "Ski carry system (A-frame or diagonal)",
+      "Helmet carry",
+      "Dry-bag or pack liner (for storms/wet snow)"
+    ],
+    "navigation_communication": [
+      "Offline maps on phone or GPS device",
+      "Paper map",
+      "Compass",
+      "Phone (fully charged)",
+      "Power bank",
+      "Headlamp"
+    ],
+    "technical_optional_by_terrain": [
+      "Ski touring helmet",
+      "Boot crampons (if steep/icy travel possible)",
+      "Ice axe (if steep/firm or exposed terrain possible)"
+    ],
+    "emergency_repair": [
+      "First aid kit",
+      "Emergency bivy or space blanket",
+      "Repair kit (multitool, ski straps, duct tape, binding/boot spares as needed)",
+      "Whistle",
+      "Fire starter (stormproof)"
+    ],
+    "food_hydration": [
+      "High-calorie food + snacks",
+      "Electrolytes",
+      "Insulated water bottle(s) (preferred in cold)",
+      "Thermos (optional)"
+    ]
+  },
+
+  "clothing": {
+    "rules": [
+      "A wind-stopping outer layer is ALWAYS included (at minimum a windproof shell; often a hardshell).",
+      "Adjust layers dynamically with effort: start cool, vent early, add insulation for stops.",
+      "Carry at least one dry spare for hands and one extra insulation piece for unexpected delays."
+    ],
+
+    "always_carried_core_items": {
+      "windstopper_outer_layer": [
+        "Windproof shell jacket (windstopper) OR waterproof hardshell jacket (windproof by default)"
+      ],
+      "hands": [
+        "Liner gloves",
+        "Insulated waterproof gloves or mittens",
+        "Spare gloves (dry)"
+      ],
+      "head_face_eyes": [
+        "Helmet",
+        "Thin beanie (fits under helmet)",
+        "Neck gaiter / buff",
+        "Sunglasses (UV400)",
+        "Goggles (storm/low-light lens)"
+      ],
+      "legs": [
+        "Touring pants (softshell or hybrid)",
+        "Windproof overpant or hardshell pant (carried when conditions demand)"
+      ],
+      "feet": [
+        "Touring boots",
+        "Thin ski socks (merino/synthetic)"
+      ]
+    },
+
+    "temperature_feel_intervals_celsius": [
+      {
+        "range": "below_-20",
+        "base_layer": {
+          "torso": "Heavy merino/synthetic long-sleeve",
+          "legs": "Heavy merino/synthetic bottoms"
+        },
+        "mid_layers": {
+          "active": "Fleece or active insulation jacket",
+          "static_extra": "Packable down/synthetic puffy (for stops/emergency)"
+        },
+        "outer_layers": {
+          "required_windstopper": "Windproof hardshell jacket (preferred) or windproof shell jacket",
+          "legs": "Windproof hardshell pants or windproof overpant"
+        },
+        "accessories": {
+          "hands": "Mittens preferred + liners; spare dry pair mandatory",
+          "head_face": "Warm hat + buff; goggles recommended",
+          "notes": "Frostbite risk: cover all skin; limit long stops; keep insulation accessible."
+        }
+      },
+      {
+        "range": "-20_to_-10",
+        "base_layer": {
+          "torso": "Warm merino/synthetic long-sleeve",
+          "legs": "Medium-warm bottoms"
+        },
+        "mid_layers": {
+          "active": "Light fleece or active insulation",
+          "static_extra": "Packable puffy recommended"
+        },
+        "outer_layers": {
+          "required_windstopper": "Windproof shell jacket OR hardshell jacket",
+          "legs": "Windproof pant (softshell OK if truly windproof) + carry hardshell if snow is heavy/wet"
+        },
+        "accessories": {
+          "hands": "Insulated gloves or mittens + spare",
+          "head_face": "Buff + thin beanie; goggles if wind/snow",
+          "notes": "Start slightly cool; vent early to prevent sweat freezing later."
+        }
+      },
+      {
+        "range": "-10_to_0",
+        "base_layer": {
+          "torso": "Medium merino/synthetic",
+          "legs": "Light to medium bottoms (optional depending on effort)"
+        },
+        "mid_layers": {
+          "active": "Light fleece (often enough)",
+          "static_extra": "Packable puffy optional but recommended for long breaks"
+        },
+        "outer_layers": {
+          "required_windstopper": "Windproof shell jacket ALWAYS (carried; often worn on ridge/descent)",
+          "legs": "Wind-resistant touring pants; carry hardshell pants if precipitation is expected"
+        },
+        "accessories": {
+          "hands": "Liner + insulated gloves; spare recommended",
+          "head_face": "Thin beanie/headband + buff; goggles if snow/wind",
+          "notes": "Typical touring zone: skin in breathable layers, add windstopper for transitions and descents."
+        }
+      },
+      {
+        "range": "0_to_10",
+        "base_layer": {
+          "torso": "Lightweight wicking base",
+          "legs": "Often none; or thin tights if you run cold"
+        },
+        "mid_layers": {
+          "active": "Optional thin fleece",
+          "static_extra": "Light puffy recommended if remote/long tour"
+        },
+        "outer_layers": {
+          "required_windstopper": "Windproof shell jacket ALWAYS (carried; worn when exposed or descending)",
+          "legs": "Breathable touring pants; carry rain-capable hardshell if wet precip possible"
+        },
+        "accessories": {
+          "hands": "Liner gloves often enough on ascent; insulated pair for descent",
+          "head_face": "Sun hat/helmet + sunglasses; goggles packed if snow possible",
+          "notes": "Overheating common: prioritize venting; wind can chill quickly when you stop."
+        }
+      },
+      {
+        "range": "above_10",
+        "base_layer": {
+          "torso": "Very light base (or short sleeve) + sun protection",
+          "legs": "Light touring pants/shorts depending on environment and policy"
+        },
+        "mid_layers": {
+          "active": "None typically",
+          "static_extra": "Thin emergency insulation recommended in pack"
+        },
+        "outer_layers": {
+          "required_windstopper": "Packable windproof shell jacket ALWAYS (mandatory even in warm weather)",
+          "legs": "Light wind-resistant pants; optional hardshell if rain likely"
+        },
+        "accessories": {
+          "hands": "Thin gloves optional; keep a warmer pair for high ridges/descents",
+          "head_face": "Sun hat + sunscreen; sunglasses mandatory",
+          "notes": "Dehydration and sun exposure become primary risks; windstopper still vital for exposed descents."
+        }
+      }
+    ],
+
+    "precipitation_overrides": {
+      "none_or_dry_snow": {
+        "jacket_choice": "Windproof shell jacket can be sufficient if no wet precipitation; hardshell still preferred for storms/exposure.",
+        "pants_choice": "Windproof touring pants; add overpant only if needed."
+      },
+      "heavy_snow": {
+        "required_additions": [
+          "Waterproof hardshell jacket (still windproof)",
+          "Waterproof pants or overpants",
+          "Goggles (storm lens)"
+        ],
+        "notes": "Snow loading + moisture management: keep insulation dry; use vents."
+      },
+      "wet_snow_or_rain": {
+        "required_additions": [
+          "Fully waterproof hardshell jacket (windproof)",
+          "Fully waterproof pants",
+          "Waterproof gloves/mittens + spare dry pair",
+          "Pack liner or dry-bags for insulation"
+        ],
+        "notes": "Highest hypothermia risk; avoid long exposed stops; keep one insulation piece protected and dry."
+      }
+    }
+  }
+}
