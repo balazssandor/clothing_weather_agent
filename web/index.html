@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Romanian Mountain Weather & Ski Touring Guide</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="favicon_io/site.webmanifest">
+    <link rel="shortcut icon" href="favicon_io/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="favicon_io/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="favicon_io/android-chrome-512x512.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            padding: 40px 20px;
+            margin: -20px -20px 30px -20px;
+            text-align: center;
+            box-shadow: 0 4px 20px var(--shadow);
+            position: relative;
+        }
+
+        .language-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: var(--primary);
+            border-color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .language-selector {
+                position: static;
+                justify-content: center;
+                margin-bottom: 16px;
+            }
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+
+        /* Avalanche Alert */
+        .avalanche-alert {
+            background: linear-gradient(135deg, var(--danger-dark), var(--danger));
+            padding: 24px 32px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .avalanche-alert-content h2 {
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .avalanche-alert-content p {
+            font-size: 1em;
+            opacity: 0.95;
+        }
+
+        .avalanche-button {
+            background: white;
+            color: var(--danger);
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            display: inline-block;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .avalanche-button:hover {
+            background: #fee2e2;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .search-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 50px 16px 20px;
+            font-size: 1em;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.2em;
+            pointer-events: none;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            font-size: 1.1em;
+        }
+
+        /* Safety Popup Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--border);
+            transform: scale(0.9);
+            transition: transform 0.4s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--danger-dark), var(--danger));
+            padding: 24px 32px;
+            border-radius: 14px 14px 0 0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header h2 {
+            font-size: 1.6em;
+            font-weight: 700;
+            margin: 0;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-body {
+            padding: 32px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            font-size: 1.05em;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        .modal-body p {
+            margin-bottom: 20px;
+        }
+
+        .modal-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-footer {
+            padding: 24px 32px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .modal-button {
+            padding: 14px 32px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-button.primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .modal-button.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+        }
+
+        .modal-button.secondary {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+
+        .modal-button.secondary:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                max-height: 90vh;
+            }
+
+            .modal-header {
+                padding: 20px 24px;
+            }
+
+            .modal-header h2 {
+                font-size: 1.3em;
+            }
+
+            .modal-body {
+                padding: 24px;
+                font-size: 1em;
+            }
+
+            .modal-footer {
+                padding: 20px 24px;
+                flex-direction: column;
+            }
+
+            .modal-button {
+                width: 100%;
+            }
+        }
+
+        /* Mountain Range Section */
+        .mountain-range-section {
+            margin-bottom: 50px;
+        }
+
+        .range-header {
+            background: var(--bg-card);
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .range-header h2 {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Location Grid */
+        .locations-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Location Card */
+        .location-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px var(--shadow);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+
+        .location-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(2, 132, 199, 0.2));
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h3 {
+            font-size: 1.6em;
+            font-weight: 800;
+            margin-bottom: 12px;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+        }
+
+        .location-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 0.95em;
+            color: var(--text-secondary);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Chart Section - Full width */
+        .chart-section {
+            width: 100%;
+        }
+
+        .chart-header {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+        }
+
+        .chart-container {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            position: relative;
+            height: 350px;
+            border: 1px solid var(--border);
+        }
+
+        /* Advice Sections - Collapsible horizontal scrolling cards */
+        .advice-sections-container {
+            margin-top: 16px;
+            position: relative;
+        }
+
+        .advice-toggle {
+            background: linear-gradient(135deg, var(--primary), #0284c7);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 0.85em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .advice-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(14, 165, 233, 0.4);
+        }
+
+        .advice-toggle::after {
+            content: '▼';
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+        }
+
+        .advice-toggle.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .advice-sections-wrapper {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        .advice-sections-wrapper.expanded {
+            max-height: 500px;
+            overflow: visible;
+        }
+
+        .advice-sections {
+            display: flex;
+            gap: 20px;
+            padding: 4px 4px 20px 4px;
+            overflow-x: auto;
+            scroll-behavior: auto;
+            -webkit-overflow-scrolling: touch;
+            cursor: grab;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .advice-sections.ready {
+            opacity: 1;
+        }
+
+        .advice-sections:active {
+            cursor: grabbing;
+        }
+
+        .advice-sections::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .advice-sections::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+
+        .advice-sections::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .advice-sections::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        .advice-sections::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .advice-sections::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+
+        .advice-sections::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .advice-sections::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        .advice-section {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            min-width: 200px;
+            max-width: 220px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .advice-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .advice-section:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 30px rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+        }
+
+        .advice-section:hover::before {
+            opacity: 1;
+        }
+
+        .advice-section h4 {
+            font-size: 0.85em;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            color: #38bdf8;
+            font-family: 'Montserrat', sans-serif;
+            border-bottom: 2px solid #0ea5e9;
+            padding-bottom: 8px;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            text-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+        }
+
+        .advice-section h5 {
+            font-size: 0.7em;
+            font-weight: 700;
+            margin-top: 12px;
+            margin-bottom: 6px;
+            color: #fbbf24;
+            font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .advice-section ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .advice-section li {
+            padding: 4px 0;
+            padding-left: 18px;
+            position: relative;
+            color: var(--text);
+            line-height: 1.5;
+            font-size: 0.75em;
+            transition: all 0.3s ease;
+        }
+
+        .advice-section li:hover {
+            color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .advice-section li:before {
+            content: "▸";
+            position: absolute;
+            left: 6px;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .advice-section p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .temp-header {
+            background: rgba(239, 68, 68, 0.1);
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid rgb(239, 68, 68);
+        }
+
+        .temp-header h3 {
+            color: rgb(239, 68, 68);
+            font-size: 1.1em;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .chart-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            font-size: 1.1em;
+        }
+
+        .chart-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--warning);
+            font-size: 1em;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+            font-size: 1.2em;
+        }
+
+        .loading:after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+
+            .advice-section {
+                min-width: 280px;
+                max-width: 300px;
+            }
+
+            .chart-header {
+                font-size: 1em;
+            }
+
+            .temp-header h3 {
+                font-size: 1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .advice-section {
+                min-width: 260px;
+                max-width: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .header .subtitle {
+                font-size: 1em;
+            }
+
+            .avalanche-alert {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .range-header h2 {
+                font-size: 1.4em;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+
+            .search-input {
+                padding: 14px 45px 14px 16px;
+                font-size: 0.95em;
+            }
+
+            .search-icon {
+                right: 14px;
+            }
+        }
+    </style>
+</head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WCRNB4D8BF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WCRNB4D8BF');
+</script>
+<body>
+    <!-- Safety Popup Modal -->
+    <div id="safety-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⛰️ Important Safety Notice</h2>
+            </div>
+            <div class="modal-body" id="modal-text">
+                <p>Loading safety information...</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-button primary" onclick="closeModal()">Understood.</button>
+                <button class="modal-button secondary" onclick="closeModal()">Just checking the weather</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="language-selector">
+<!--                <button class="lang-btn active" data-lang="en" onclick="switchLanguage('en')">EN</button>-->
+<!--                <button class="lang-btn" data-lang="ro" onclick="switchLanguage('ro')">RO</button>-->
+<!--                <button class="lang-btn" data-lang="hu" onclick="switchLanguage('hu')">HU</button>-->
+            </div>
+            <h1 data-i18n="title">⛰️ Romanian Mountain Weather</h1>
+            <div class="subtitle" id="subtitle" data-i18n="loading">Loading forecast data...</div>
+        </div>
+
+        <!-- Avalanche Alert -->
+        <div class="avalanche-alert">
+            <div class="avalanche-alert-content">
+                <h2>⚠️ Avalanche Risk Bulletin</h2>
+                <p>Always check the official avalanche bulletin before heading to the mountains</p>
+            </div>
+            <a href="http://www.meteoromania.ro/Upload-Produse/nivologie/nivologie.pdf"
+               target="_blank"
+               rel="noopener"
+               class="avalanche-button"
+               onclick="trackEvent('avalanche_bulletin_click', { event_category: 'outbound_link', event_label: 'Avalanche Bulletin PDF' })">
+                View Bulletin →
+            </a>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+            <div class="search-wrapper">
+                <input
+                    type="text"
+                    id="search-input"
+                    class="search-input"
+                    placeholder="Search by mountain range or location name..."
+                    autocomplete="off"
+                    data-i18n-placeholder="searchPlaceholder"
+                >
+                <span class="search-icon">🔍</span>
+            </div>
+        </div>
+
+        <!-- Locations Container -->
+        <div id="locations-container" class="loading" data-i18n="loadingForecasts">Loading mountain forecasts</div>
+    </div>
+
+    <script>
+        // ============================================
+        // TRANSLATIONS / INTERNAȚIALIZATION (i18n)
+        // ============================================
+        const translations = {
+            en: {
+                title: "⛰️ Romanian Mountains: Ski Touring & Weather Guide",
+                loading: "Loading forecast data...",
+                searchPlaceholder: "Search by mountain range or location name...",
+                loadingForecasts: "Loading mountain forecasts",
+                equipmentClothing: "Equipment & Clothing",
+                weatherForecast: "📊 Weather Forecast",
+                chartNotAvailable: "⚠️ Weather chart data not available",
+                adviceNotAvailable: "⚠️ Clothing advice not available",
+                noAdviceFound: "No advice sections found",
+                noData: "No Data",
+                temperature: "Temperature",
+                precipitation: "Precipitation",
+                wind: "Wind",
+                dateFormat: "{date} • 7AM - 10PM • Ski Touring Conditions & Clothing Guide"
+            },
+            ro: {
+                title: "⛰️ Vreme Munții României",
+                loading: "Se încarcă datele prognozei...",
+                searchPlaceholder: "Căutare după lanț muntos sau locație...",
+                loadingForecasts: "Se încarcă prognozele montane",
+                equipmentClothing: "Echipament & Îmbrăcăminte",
+                weatherForecast: "📊 Prognoză Meteo",
+                chartNotAvailable: "⚠️ Graficul meteo indisponibil",
+                adviceNotAvailable: "⚠️ Sfaturi de îmbrăcăminte indisponibile",
+                noAdviceFound: "Nu s-au găsit secțiuni de sfaturi",
+                noData: "Fără Date",
+                temperature: "Temperatură",
+                precipitation: "Precipitații",
+                wind: "Vânt",
+                dateFormat: "{date} • 7AM - 10PM • Condiții Schi-Tură & Ghid Îmbrăcăminte"
+            },
+            hu: {
+                title: "⛰️ Román Hegyi Időjárás",
+                loading: "Előrejelzési adatok betöltése...",
+                searchPlaceholder: "Keresés hegység vagy helyszín szerint...",
+                loadingForecasts: "Hegyi előrejelzések betöltése",
+                equipmentClothing: "Felszerelés & Öltözet",
+                weatherForecast: "📊 Időjárás Előrejelzés",
+                chartNotAvailable: "⚠️ Időjárási grafikon nem elérhető",
+                adviceNotAvailable: "⚠️ Öltözködési tanácsok nem elérhetők",
+                noAdviceFound: "Nem találhatók tanácskozó szakaszok",
+                noData: "Nincs Adat",
+                temperature: "Hőmérséklet",
+                precipitation: "Csapadék",
+                wind: "Szél",
+                dateFormat: "{date} • 7AM - 10PM • Sítúra Feltételek & Öltözködési Útmutató"
+            }
+        };
+
+        let currentLanguage = localStorage.getItem('language') || 'en';
+
+        // Switch language function
+        function switchLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang);
+            document.documentElement.lang = lang;
+
+            // Update language buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+
+            // Update all translatable elements
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.dataset.i18n;
+                if (translations[lang] && translations[lang][key]) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+
+            // Update placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.dataset.i18nPlaceholder;
+                if (translations[lang] && translations[lang][key]) {
+                    element.placeholder = translations[lang][key];
+                }
+            });
+
+            // Update page title
+            if (translations[lang].title) {
+                document.title = translations[lang].title.replace('⛰️ ', '');
+            }
+
+            // Trigger reload of locations to update dynamic content
+            if (typeof loadLocations === 'function') {
+                loadLocations();
+            }
+        }
+
+        // Initialize language on page load
+        function initLanguage() {
+            const savedLang = localStorage.getItem('language') || 'en';
+            switchLanguage(savedLang);
+        }
+
+        /*
+         * Google Analytics Event Tracking
+         * ===============================
+         *
+         * This page tracks the following events:
+         *
+         * 1. safety_modal_shown - When safety popup is displayed
+         * 2. safety_modal_closed - Which button/method closed the modal (Understood, Just checking, Escape, Backdrop)
+         * 3. search - User searches with term, results count, matched locations/ranges
+         * 4. search_no_results - Failed searches for optimization
+         * 5. location_viewed - Specific location cards viewed (scroll into view)
+         * 6. mountain_range_viewed - Mountain range sections viewed
+         * 7. chart_loaded - Successful chart data loading
+         * 8. chart_load_failed - Failed chart loads (debugging)
+         * 9. avalanche_bulletin_click - Outbound link to bulletin
+         * 10. page_loaded - Successful page load with metadata
+         * 11. page_load_failed - Page load errors
+         * 12. user_engaged - User stays 30+ seconds
+         * 13. session_end - Time spent on page
+         * 14. return_visitor - Returning visitors count
+         *
+         * All events include relevant context (location names, search terms, etc.)
+         */
+
+        // Format date as DD-MM-YYYY
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+        }
+
+        // Get tomorrow's date
+        function getTomorrowDate() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            return tomorrow.toISOString().split('T')[0];
+        }
+
+        // Get date offset by N days from today in YYYY-MM-DD format
+        function getDateOffset(dayOffset) {
+            const date = new Date();
+            date.setDate(date.getDate() + dayOffset);
+            return date.toISOString().split('T')[0];
+        }
+
+        // Detect available local forecast date by trying multiple dates
+        async function detectLocalForecastDate() {
+            // Try dates in order: tomorrow, today, yesterday, +2 days, -2 days, etc.
+            const dateOffsets = [1, 0, -1, 2, -2, 3, -3, 4, -4, 5, -5];
+
+            for (const offset of dateOffsets) {
+                const testDate = getDateOffset(offset);
+                const testPath = `../tomorrow_mountain_forecast_data/date=${testDate}/forecast_metadata.json`;
+
+                try {
+                    const response = await fetch(testPath);
+                    if (response.ok) {
+                        console.log(`✓ Found local forecast data for date: ${testDate} (${offset > 0 ? '+' : ''}${offset} days from today)`);
+                        return testDate;
+                    }
+                } catch (error) {
+                    // Continue trying other dates
+                }
+            }
+
+            // If no local data found, fall back to tomorrow
+            console.warn('⚠️ No local forecast data found, falling back to tomorrow');
+            return getTomorrowDate();
+        }
+
+        let chartInstances = {};
+
+        // Create a weather chart
+        function createWeatherChart(canvasId, hourlyData) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return null;
+
+            // If a chart instance already exists for this canvas, destroy it
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+
+            // Extract data
+            const hours = hourlyData.map(d => `${String(d.hour).padStart(2, '0')}:00`);
+            const temperatures = hourlyData.map(d => d.temperature);
+            const temperaturesFeel = hourlyData.map(d => d.temperature_feel);
+            const precipitation = hourlyData.map(d => d.precipitation);
+            const windSpeed = hourlyData.map(d => d.wind_speed);
+
+            const newChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: temperatures,
+                            borderColor: 'rgb(239, 68, 68)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                        },
+                        {
+                            label: 'Feels Like (°C)',
+                            data: temperaturesFeel,
+                            borderColor: 'rgb(251, 146, 60)',
+                            backgroundColor: 'rgba(251, 146, 60, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            fill: false,
+                            yAxisID: 'y',
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'Wind Speed (km/h)',
+                            data: windSpeed,
+                            borderColor: 'rgb(14, 165, 233)',
+                            backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                        },
+                        {
+                            label: 'Precipitation (mm)',
+                            data: precipitation,
+                            type: 'bar',
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            yAxisID: 'y2',
+                            order: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: 'rgb(248, 250, 252)',
+                                padding: 15,
+                                font: {
+                                    size: 12,
+                                    weight: '600'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                            titleColor: 'rgb(248, 250, 252)',
+                            bodyColor: 'rgb(203, 213, 225)',
+                            borderColor: 'rgb(51, 65, 85)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toFixed(1);
+                                    if (context.dataset.label.includes('Temperature')) {
+                                        label += ' °C';
+                                    } else if (context.dataset.label.includes('Wind')) {
+                                        label += ' km/h';
+                                    } else if (context.dataset.label.includes('Precipitation')) {
+                                        label += ' mm';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(51, 65, 85, 0.5)',
+                            },
+                            ticks: {
+                                color: 'rgb(203, 213, 225)',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)',
+                                color: 'rgb(239, 68, 68)',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(51, 65, 85, 0.3)',
+                            },
+                            ticks: {
+                                color: 'rgb(239, 68, 68)',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Wind Speed (km/h)',
+                                color: 'rgb(14, 165, 233)',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                color: 'rgb(14, 165, 233)',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: false,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+
+            chartInstances[canvasId] = newChart;
+            return newChart;
+        }
+
+        // Create location card
+        async function createLocationCard(location, forecastDate) {
+            const card = document.createElement('div');
+            card.className = 'location-card';
+
+            // Track location card view with Intersection Observer
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        trackEvent('location_viewed', {
+                            location_name: location.name,
+                            mountain_range: location.mountain_range,
+                            elevation: location.elevation,
+                            zone: location.zone
+                        });
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            setTimeout(() => observer.observe(card), 100);
+
+            const baseFilename = `${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${location.zone.replace(/ /g, '_')}`;
+            const adviceFilename = `${baseFilename}_model_advice_${currentLanguage}.md`;
+            const hourlyDataFilename = `${baseFilename}_hourly_data_7am_10pm.json`;
+
+            // Load advice markdown
+            let adviceMarkdown = '';
+            let adviceSections = [];
+            try {
+                let response;
+
+                // Try S3 first
+                response = await fetch(`./${adviceFilename}`);
+
+                // If S3 fails, try local path
+                if (!response.ok) {
+                    console.log(`S3 not found, trying local: ../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
+                    response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
+                }
+
+                if (response.ok) {
+                    adviceMarkdown = await response.text();
+                    console.log(`✓ Loaded advice for ${location.name}, length: ${adviceMarkdown.length}`);
+                    console.log('First 200 chars:', adviceMarkdown.substring(0, 200));
+                    adviceSections = parseAdviceMarkdown(adviceMarkdown);
+                    console.log(`Parsed ${adviceSections.length} sections for ${location.name}`);
+                    if (adviceSections.length > 0) {
+                        console.log('First section:', adviceSections[0]);
+                    }
+                } else {
+                    console.warn(`❌ Failed to fetch advice for ${location.name}: ${response.status}`);
+                }
+            } catch (error) {
+                console.error(`❌ Error loading advice for ${location.name}:`, error);
+                adviceSections = [{
+                    title: 'Error',
+                    content: [translations[currentLanguage].adviceNotAvailable],
+                    subsections: []
+                }];
+            }
+
+            if (adviceSections.length === 0) {
+                console.warn(`No sections parsed for ${location.name}`);
+                adviceSections = [{
+                    title: translations[currentLanguage].noData,
+                    content: [translations[currentLanguage].noAdviceFound],
+                    subsections: []
+                }];
+            }
+
+            // Generate unique canvas ID
+            const canvasId = `chart-${baseFilename}`;
+
+            // Extract temperature header if present
+            let tempHeader = '';
+            if (adviceSections.length > 0 && adviceSections[0].title.includes('Temperature')) {
+                tempHeader = `<div class="temp-header"><h3>${adviceSections[0].title}</h3></div>`;
+                adviceSections = adviceSections.slice(1); // Remove temperature section from cards
+            }
+
+            // Render advice sections as horizontal cards (duplicate for seamless infinite scroll)
+            const adviceCardsHtml = adviceSections.map(section => renderSection(section)).join('');
+            const duplicatedCardsHtml = adviceCardsHtml + adviceCardsHtml; // Duplicate for seamless loop
+            console.log(`Generated HTML length for ${location.name}: ${adviceCardsHtml.length} chars`);
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <h3>${location.name}</h3>
+                    <div class="location-meta">
+<!--                        <div class="meta-item">📍 <strong>${location.zone}</strong></div>-->
+                        <div class="meta-item">⛰️ <strong>${location.elevation}m</strong></div>
+                        <div class="meta-item">🌍 ${location.latitude.toFixed(3)}°N, ${location.longitude.toFixed(3)}°E</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    ${tempHeader}
+                    <div class="chart-section">
+                        <div class="chart-header" data-i18n="weatherForecast">${translations[currentLanguage].weatherForecast}</div>
+                        <div class="chart-container">
+                            <canvas id="${canvasId}"></canvas>
+                        </div>
+                    </div>
+                    <div class="advice-sections-container">
+                        <button class="advice-toggle collapsed" onclick="toggleAdvice(this)" data-i18n="equipmentClothing">
+                            ${translations[currentLanguage].equipmentClothing}
+                        </button>
+                        <div class="advice-sections-wrapper">
+                            <div class="advice-sections">
+                                ${duplicatedCardsHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Enable drag scrolling on advice sections
+            const adviceSectionsEl = card.querySelector('.advice-sections');
+            if (adviceSectionsEl) {
+                enableDragScroll(adviceSectionsEl);
+            }
+
+            // Load hourly data and create chart
+            setTimeout(async () => {
+                try {
+                    let response;
+
+                    // Try S3 first
+                    response = await fetch(`./${hourlyDataFilename}`);
+
+                    // If S3 fails, try local path
+                    if (!response.ok) {
+                        console.log(`S3 not found, trying local: ../tomorrow_mountain_forecast_data/date=${forecastDate}/${hourlyDataFilename}`);
+                        response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${hourlyDataFilename}`);
+                    }
+
+                    if (response.ok) {
+                        const hourlyData = await response.json();
+                        console.log(`✓ Loaded hourly data for ${location.name}, ${hourlyData.length} data points`);
+                        createWeatherChart(canvasId, hourlyData);
+
+                        // Track successful chart load
+                        trackEvent('chart_loaded', {
+                            location_name: location.name,
+                            mountain_range: location.mountain_range,
+                            data_points: hourlyData.length
+                        });
+                    } else {
+                        throw new Error('Failed to load hourly data');
+                    }
+                } catch (error) {
+                    console.warn(`Could not load chart for ${location.name}:`, error);
+                    const container = document.querySelector(`#${canvasId}`).parentElement;
+                    container.innerHTML = `<div class="chart-error">${translations[currentLanguage].chartNotAvailable}</div>`;
+
+                    // Track chart load failure
+                    trackEvent('chart_load_failed', {
+                        location_name: location.name,
+                        mountain_range: location.mountain_range,
+                        error: error.message
+                    });
+                }
+            }, 100);
+
+            return card;
+        }
+
+        // Load and display locations
+        async function loadLocations() {
+            const container = document.getElementById('locations-container');
+            const subtitle = document.getElementById('subtitle');
+
+            // Load forecast metadata
+            let forecastDate = getTomorrowDate();
+            let isLocal = false;
+
+            try {
+                // Try S3 first
+                let metadataResponse = await fetch('./forecast_metadata.json');
+
+                if (metadataResponse.ok) {
+                    const metadata = await metadataResponse.json();
+                    forecastDate = metadata.forecast_date;
+                    console.log('✓ Loaded forecast date from S3:', forecastDate);
+                } else {
+                    throw new Error('S3 metadata not found');
+                }
+            } catch (error) {
+                // S3 failed, try to detect local data
+                console.log('🔍 S3 not accessible, searching for local forecast data...');
+                isLocal = true;
+                forecastDate = await detectLocalForecastDate();
+            }
+
+            const dateText = translations[currentLanguage].dateFormat.replace('{date}', formatDate(forecastDate));
+            subtitle.textContent = dateText;
+
+            try {
+                // Load mountain locations
+                let response;
+
+                // Try S3 first
+                response = await fetch('./mountain_locations.json');
+
+                // If S3 fails, try local path
+                if (!response.ok) {
+                    console.log('S3 not found, trying local: ../mountain_locations.json');
+                    response = await fetch('../mountain_locations.json');
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Failed to load mountain_locations.json: ${response.status}`);
+                }
+
+                const locations = await response.json();
+                console.log(`✓ Loaded ${locations.length} mountain locations`);
+
+                // Group by mountain range
+                const groupedLocations = {};
+                locations.forEach(loc => {
+                    if (!groupedLocations[loc.mountain_range]) {
+                        groupedLocations[loc.mountain_range] = [];
+                    }
+                    groupedLocations[loc.mountain_range].push(loc);
+                });
+
+                container.innerHTML = '';
+
+                // Create sections
+                for (const [rangeName, rangeLocations] of Object.entries(groupedLocations)) {
+                    const section = document.createElement('div');
+                    section.className = 'mountain-range-section';
+
+                    const rangeHeader = document.createElement('div');
+                    rangeHeader.className = 'range-header';
+                    rangeHeader.innerHTML = `<h2>🏔️ ${rangeName}</h2>`;
+                    section.appendChild(rangeHeader);
+
+                    // Track mountain range view
+                    const rangeObserver = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                trackEvent('mountain_range_viewed', {
+                                    mountain_range: rangeName,
+                                    locations_count: rangeLocations.length
+                                });
+                                rangeObserver.unobserve(entry.target);
+                            }
+                        });
+                    }, { threshold: 0.3 });
+
+                    setTimeout(() => rangeObserver.observe(section), 100);
+
+                    const grid = document.createElement('div');
+                    grid.className = 'locations-grid';
+
+                    for (const location of rangeLocations) {
+                        const card = await createLocationCard(location, forecastDate);
+                        grid.appendChild(card);
+                    }
+
+                    section.appendChild(grid);
+                    container.appendChild(section);
+                }
+
+                // Setup search functionality
+                setupSearch();
+
+                // Track successful page load with metadata
+                trackEvent('page_loaded', {
+                    forecast_date: forecastDate,
+                    total_locations: locations.length,
+                    mountain_ranges: Object.keys(groupedLocations).length,
+                    ranges_list: Object.keys(groupedLocations).join(', ')
+                });
+            } catch (error) {
+                container.innerHTML = '<div class="chart-error" style="padding: 60px 20px;">⚠️ Error loading forecast data. Please ensure the forecast has been generated and uploaded.</div>';
+                console.error('Error loading data:', error);
+
+                // Track page load failure
+                trackEvent('page_load_failed', {
+                    error: error.message
+                });
+            }
+        }
+
+        // Setup search/filter functionality
+        function setupSearch() {
+            const searchInput = document.getElementById('search-input');
+            const container = document.getElementById('locations-container');
+            let searchTimeout;
+
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                const sections = container.querySelectorAll('.mountain-range-section');
+                let visibleCount = 0;
+                let matchedLocations = [];
+                let matchedRanges = [];
+
+                sections.forEach(section => {
+                    const rangeHeader = section.querySelector('.range-header h2');
+                    const rangeName = rangeHeader.textContent.toLowerCase();
+                    const cards = section.querySelectorAll('.location-card');
+                    let visibleCardsInSection = 0;
+
+                    cards.forEach(card => {
+                        const locationName = card.querySelector('.card-header h3').textContent.toLowerCase();
+                        const matches = searchTerm === '' ||
+                                      rangeName.includes(searchTerm) ||
+                                      locationName.includes(searchTerm);
+
+                        if (matches) {
+                            card.style.display = '';
+                            visibleCardsInSection++;
+                            visibleCount++;
+
+                            if (searchTerm !== '') {
+                                matchedLocations.push(locationName);
+                                if (!matchedRanges.includes(rangeName)) {
+                                    matchedRanges.push(rangeName);
+                                }
+                            }
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+
+                    // Hide entire section if no cards are visible
+                    if (visibleCardsInSection === 0) {
+                        section.style.display = 'none';
+                    } else {
+                        section.style.display = '';
+                    }
+                });
+
+                // Track search with debounce (wait 1 second after user stops typing)
+                if (searchTerm !== '') {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        trackEvent('search', {
+                            search_term: searchTerm,
+                            results_count: visibleCount,
+                            matched_locations: matchedLocations.slice(0, 5).join(', '),
+                            matched_ranges: matchedRanges.join(', ')
+                        });
+                    }, 1000);
+                }
+
+                // Show "no results" message if nothing matches
+                let noResultsMsg = container.querySelector('.no-results');
+                if (visibleCount === 0 && searchTerm !== '') {
+                    if (!noResultsMsg) {
+                        noResultsMsg = document.createElement('div');
+                        noResultsMsg.className = 'no-results';
+                        noResultsMsg.innerHTML = `
+                            <div>🔍 No locations found matching "<strong>${e.target.value}</strong>"</div>
+                            <div style="margin-top: 10px; font-size: 0.9em;">Try searching by mountain range (e.g., "Fagaras") or location name (e.g., "Balea")</div>
+                        `;
+                        container.appendChild(noResultsMsg);
+                    } else {
+                        noResultsMsg.style.display = '';
+                        noResultsMsg.innerHTML = `
+                            <div>🔍 No locations found matching "<strong>${e.target.value}</strong>"</div>
+                            <div style="margin-top: 10px; font-size: 0.9em;">Try searching by mountain range (e.g., "Fagaras") or location name (e.g., "Balea")</div>
+                        `;
+                    }
+
+                    // Track failed search
+                    trackEvent('search_no_results', {
+                        search_term: searchTerm
+                    });
+                } else if (noResultsMsg) {
+                    noResultsMsg.style.display = 'none';
+                }
+            });
+        }
+
+        // Google Analytics Event Tracking
+        function trackEvent(eventName, eventParams = {}) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, eventParams);
+            }
+        }
+
+        // Parse markdown advice into structured sections
+        function parseAdviceMarkdown(markdown) {
+            const lines = markdown.trim().split('\n');
+            const sections = [];
+            let currentSection = null;
+            let currentSubsection = null;
+
+            console.log(`Parsing ${lines.length} lines`);
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmedLine = line.trim();
+
+                if (!trimmedLine) continue;
+
+                // Main section header (e.g., **Base Layers:** or **Temperature...**)
+                if (trimmedLine.match(/^\*\*[^*]+\*\*/)) {
+                    // Save previous section
+                    if (currentSection) {
+                        console.log(`Saving section: ${currentSection.title}, items: ${currentSection.content.length}`);
+
+                        // Special handling for Essential Equipment - promote subsections to separate cards
+                        if (currentSection.title === 'Essential Equipment' && currentSection.subsections.length > 0) {
+                            currentSection.subsections.forEach(subsection => {
+                                sections.push({
+                                    title: subsection.title,
+                                    content: subsection.items,
+                                    subsections: []
+                                });
+                            });
+                        } else {
+                            sections.push(currentSection);
+                        }
+                    }
+
+                    // Extract everything between the first ** and closing **
+                    const match = trimmedLine.match(/^\*\*([^*]+)\*\*(.*)/);
+                    if (match) {
+                        let title = match[1].trim();
+                        // Remove trailing colon if present
+                        title = title.replace(/:$/, '');
+
+                        currentSection = {
+                            title: title,
+                            content: [],
+                            subsections: []
+                        };
+                        currentSubsection = null;
+
+                        // If there's text after the closing **, add it
+                        const afterText = match[2].trim();
+                        if (afterText) {
+                            currentSection.content.push(afterText);
+                        }
+
+                        console.log(`New section: ${title}`);
+                    }
+                }
+                // Subsection header (e.g., *Mandatory Safety (Avalanche):*)
+                else if (trimmedLine.match(/^\*[^*]+\*:?$/)) {
+                    const match = trimmedLine.match(/^\*([^*]+)\*:?$/);
+                    if (match && currentSection) {
+                        let title = match[1].trim();
+                        title = title.replace(/:$/, '');
+
+                        currentSubsection = {
+                            title: title,
+                            items: []
+                        };
+                        currentSection.subsections.push(currentSubsection);
+                        console.log(`New subsection: ${title}`);
+                    }
+                }
+                // List item
+                else if (trimmedLine.startsWith('- ')) {
+                    const item = trimmedLine.substring(2).trim();
+                    if (currentSubsection) {
+                        currentSubsection.items.push(item);
+                    } else if (currentSection) {
+                        currentSection.content.push(item);
+                    }
+                }
+            }
+
+            // Save last section
+            if (currentSection) {
+                console.log(`Saving final section: ${currentSection.title}`);
+
+                // Special handling for Essential Equipment - promote subsections to separate cards
+                if (currentSection.title === 'Essential Equipment' && currentSection.subsections.length > 0) {
+                    currentSection.subsections.forEach(subsection => {
+                        sections.push({
+                            title: subsection.title,
+                            content: subsection.items,
+                            subsections: []
+                        });
+                    });
+                } else {
+                    sections.push(currentSection);
+                }
+            }
+
+            console.log(`Total sections parsed: ${sections.length}`);
+            return sections;
+        }
+
+        // Toggle advice sections visibility
+        function toggleAdvice(button) {
+            const wrapper = button.nextElementSibling;
+            button.classList.toggle('collapsed');
+            wrapper.classList.toggle('expanded');
+        }
+
+        // Enable drag scrolling and infinite loop for advice sections
+        function enableDragScroll(element) {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+            let isPaused = false;
+            let autoScrollInterval = null;
+
+            // Calculate the scroll width of one full set (half of total since we duplicated)
+            const getHalfWidth = () => element.scrollWidth / 2;
+
+            // Initialize scroll position to prevent flickering
+            // Wait a moment for layout to complete, then set initial position
+            setTimeout(() => {
+                const halfWidth = getHalfWidth();
+                if (halfWidth > 0) {
+                    element.scrollLeft = 1; // Start at 1px (not 0) to avoid immediate jump
+                    element.classList.add('ready'); // Fade in after positioning
+                }
+            }, 50);
+
+            // Handle infinite scroll looping
+            const handleInfiniteScroll = () => {
+                const halfWidth = getHalfWidth();
+                const currentScroll = element.scrollLeft;
+
+                // If scrolled past the halfway point (end of first set), jump back to start
+                if (currentScroll >= halfWidth - 10) {
+                    element.scrollLeft = currentScroll - halfWidth;
+                }
+                // If scrolled to beginning, jump to halfway point
+                else if (currentScroll <= 0) {
+                    element.scrollLeft = halfWidth;
+                }
+            };
+
+            // Auto-scroll animation (smooth continuous scrolling)
+            const autoScroll = () => {
+                if (!isDown && !isPaused) {
+                    element.scrollLeft += 1; // Scroll 1px at a time for smooth animation
+                    handleInfiniteScroll();
+                }
+            };
+
+            // Start auto-scrolling (60fps = ~16ms interval, but slower speed)
+            autoScrollInterval = setInterval(autoScroll, 30); // 30ms for moderate speed
+
+            // Pause on hover
+            element.addEventListener('mouseenter', () => {
+                isPaused = true;
+            });
+
+            element.addEventListener('mouseleave', () => {
+                if (!isDown) {
+                    isPaused = false;
+                }
+            });
+
+            // Drag scrolling functionality
+            element.addEventListener('mousedown', (e) => {
+                isDown = true;
+                isPaused = true;
+                element.style.cursor = 'grabbing';
+                startX = e.pageX - element.offsetLeft;
+                scrollLeft = element.scrollLeft;
+            });
+
+            element.addEventListener('mouseleave', () => {
+                if (isDown) {
+                    isDown = false;
+                    element.style.cursor = 'grab';
+                    isPaused = false;
+                }
+            });
+
+            element.addEventListener('mouseup', () => {
+                isDown = false;
+                element.style.cursor = 'grab';
+                isPaused = false;
+            });
+
+            element.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - element.offsetLeft;
+                const walk = (x - startX) * 2;
+                element.scrollLeft = scrollLeft - walk;
+            });
+
+            // Manual scroll also triggers infinite loop
+            element.addEventListener('scroll', handleInfiniteScroll);
+        }
+
+        // Render section as HTML
+        function renderSection(section) {
+            if (!section || !section.title) return '';
+
+            let html = `<div class="advice-section">`;
+            html += `<h4>${section.title}</h4>`;
+
+            // Render main content
+            if (section.content && section.content.length > 0) {
+                html += '<ul>';
+                section.content.forEach(item => {
+                    if (item) {
+                        html += `<li>${item}</li>`;
+                    }
+                });
+                html += '</ul>';
+            }
+
+            // Render subsections
+            if (section.subsections && section.subsections.length > 0) {
+                section.subsections.forEach(sub => {
+                    if (sub && sub.title) {
+                        html += `<h5>${sub.title}</h5>`;
+                        if (sub.items && sub.items.length > 0) {
+                            html += '<ul>';
+                            sub.items.forEach(item => {
+                                if (item) {
+                                    html += `<li>${item}</li>`;
+                                }
+                            });
+                            html += '</ul>';
+                        }
+                    }
+                });
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        // Safety Modal Functions
+        async function loadSafetyModal() {
+            try {
+                // Try to load popup text from S3 or local
+                let response;
+                try {
+                    response = await fetch('./popup_advice.txt');
+                } catch {
+                    response = await fetch('../popup_advice.txt');
+                }
+
+                if (response.ok) {
+                    const text = await response.text();
+                    const modalBody = document.getElementById('modal-text');
+
+                    // Split text into paragraphs and format
+                    const paragraphs = text.trim().split('\n\n').filter(p => p.trim());
+                    modalBody.innerHTML = paragraphs.map(p => `<p>${p.trim()}</p>`).join('');
+                }
+            } catch (error) {
+                console.warn('Could not load safety notice:', error);
+                // Keep default text if loading fails
+            }
+
+            // Show modal after brief delay
+            setTimeout(() => {
+                const modal = document.getElementById('safety-modal');
+                modal.classList.add('show');
+
+                // Track modal view
+                trackEvent('safety_modal_shown', {
+                    event_category: 'engagement',
+                    event_label: 'Safety Notice Displayed'
+                });
+            }, 500);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('safety-modal');
+            const clickedButton = event.target.textContent.trim();
+
+            modal.classList.remove('show');
+
+            // Store in sessionStorage to not show again this session
+            sessionStorage.setItem('safetyModalShown', 'true');
+
+            // Track which button was clicked
+            trackEvent('safety_modal_closed', {
+                event_category: 'engagement',
+                event_label: clickedButton,
+                button_type: clickedButton
+            });
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('safety-modal');
+                if (modal.classList.contains('show')) {
+                    // Track escape key close
+                    trackEvent('safety_modal_closed', {
+                        event_category: 'engagement',
+                        event_label: 'Escape Key',
+                        button_type: 'Escape Key'
+                    });
+                    modal.classList.remove('show');
+                    sessionStorage.setItem('safetyModalShown', 'true');
+                }
+            }
+        });
+
+        // Close modal when clicking outside content area
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('safety-modal');
+            if (e.target === modal && modal.classList.contains('show')) {
+                // Track backdrop click close
+                trackEvent('safety_modal_closed', {
+                    event_category: 'engagement',
+                    event_label: 'Backdrop Click',
+                    button_type: 'Backdrop Click'
+                });
+                modal.classList.remove('show');
+                sessionStorage.setItem('safetyModalShown', 'true');
+            }
+        });
+
+        // Check if modal should be shown (once per session)
+        function checkSafetyModal() {
+            const hasSeenModal = sessionStorage.getItem('safetyModalShown');
+            if (!hasSeenModal) {
+                loadSafetyModal();
+                sessionStorage.setItem('safetyModalShown', 'true');
+            }
+        }
+
+        // Track user engagement time
+        let pageLoadTime = Date.now();
+        let engagementTracked = false;
+
+        // Track engagement after 30 seconds
+        setTimeout(() => {
+            if (!engagementTracked) {
+                trackEvent('user_engaged', {
+                    event_category: 'engagement',
+                    event_label: '30+ seconds',
+                    engagement_time_seconds: 30
+                });
+                engagementTracked = true;
+            }
+        }, 30000);
+
+        // Track before user leaves
+        window.addEventListener('beforeunload', () => {
+            const timeSpent = Math.round((Date.now() - pageLoadTime) / 1000);
+            if (timeSpent > 5) {
+                trackEvent('session_end', {
+                    time_spent_seconds: timeSpent,
+                    time_spent_minutes: Math.round(timeSpent / 60)
+                });
+            }
+        });
+
+        // Track return visitors
+        const visitCount = parseInt(localStorage.getItem('visitCount') || '0') + 1;
+        localStorage.setItem('visitCount', visitCount.toString());
+        if (visitCount > 1) {
+            trackEvent('return_visitor', {
+                visit_number: visitCount
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initLanguage();
+            checkSafetyModal();
+        });
+    </script>
+</body>
+</html>
