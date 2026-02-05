@@ -336,29 +336,41 @@ def get_tomorrow_weather_report(
         latitude, longitude, 0, 23, timeout_seconds=timeout_seconds
     )
 
-def wind_chill_with_gusts(temp_c, wind_kmh, gust_kmh):
-    # Base wind chill
+def wind_chill_with_gusts(temp_c, wind_kmh, gust_kmh=None):
+    """
+    Calculate wind chill (°C) using sustained wind speed,
+    with a small penalty for strong gusts (max wind).
+    """
+
+    # Wind chill is not defined in mild conditions
     if temp_c > 10 or wind_kmh < 4.8:
-        base = temp_c
-    else:
-        v16 = wind_kmh ** 0.16
-        base = (
-            13.12
-            + 0.6215 * temp_c
-            - 11.37 * v16
-            + 0.3965 * temp_c * v16
-        )
+        return round(temp_c, 1)
 
-    # Gust adjustment
+    # Base wind chill (Environment Canada / NOAA)
+    v16 = wind_kmh ** 0.16
+    wind_chill = (
+        13.12
+        + 0.6215 * temp_c
+        - 11.37 * v16
+        + 0.3965 * temp_c * v16
+    )
+
+    # Optional gust penalty (uses max wind)
     if gust_kmh is None or temp_c > 5:
-        return round(base, 1)
+        return round(wind_chill, 1)
 
-    delta_v = gust_kmh - wind_kmh
-    if delta_v < 5:
-        return round(base, 1)
+    gust_delta = gust_kmh - wind_kmh
 
-    gust_penalty = min(2.0, 0.1 * (delta_v ** 0.5))
-    return round(base - gust_penalty, 1)
+    # Ignore minor gust differences
+    if gust_delta < 5:
+        return round(wind_chill, 1)
+
+    # Gust penalty: sqrt scaling, capped
+    # ~0.5–2.0 °C typical
+    gust_penalty = min(2.0, 0.15 * (gust_delta ** 0.5))
+
+    return round(wind_chill - gust_penalty, 1)
+
 
 
 if __name__ == "__main__":

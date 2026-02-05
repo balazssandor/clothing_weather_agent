@@ -1124,6 +1124,7 @@
             const temperaturesFeel = hourlyData.map(d => d.temperature_feel);
             const precipitation = hourlyData.map(d => d.precipitation);
             const windSpeed = hourlyData.map(d => d.wind_speed);
+            const windGust = hourlyData.map(d => d.wind_gusts || d.wind_speed);
             const windDirections = hourlyData.map(d => d.wind_direction || 0);
 
             const newChart = new Chart(ctx, {
@@ -1157,7 +1158,7 @@
                             borderWidth: 2,
                         },
                         {
-                            label: 'Wind Speed (km/h) ↑ Direction',
+                            label: 'Wind Speed (km/h)',
                             data: windSpeed,
                             borderColor: 'rgb(14, 165, 233)',
                             backgroundColor: 'rgba(14, 165, 233, 0.1)',
@@ -1167,6 +1168,18 @@
                             pointRadius: 4,
                             pointHoverRadius: 6,
                             windDirections: windDirections,
+                        },
+                        {
+                            label: 'Wind Gusts (km/h)',
+                            data: windGust,
+                            borderColor: 'rgba(14, 165, 233, 0.5)',
+                            backgroundColor: 'rgba(14, 165, 233, 0.05)',
+                            borderDash: [3, 3],
+                            tension: 0.4,
+                            fill: '-1',
+                            yAxisID: 'y1',
+                            pointRadius: 2,
+                            pointHoverRadius: 4,
                         },
                         {
                             label: 'Precipitation (mm)',
@@ -1216,16 +1229,19 @@
                                         label += ' °C';
                                     } else if (context.dataset.label.includes('Wind')) {
                                         label += ' km/h';
-                                        // Add wind direction info (meteorological convention: direction wind is FROM)
-                                        if (context.dataset.windDirections && context.dataIndex !== undefined) {
-                                            const direction = context.dataset.windDirections[context.dataIndex];
-                                            const cardinalDir = getCardinalDirection(direction);
-                                            label += ` from ${cardinalDir} (${direction}°)`;
-                                        }
                                     } else if (context.dataset.label.includes('Precipitation')) {
                                         label += ' mm';
                                     }
                                     return label;
+                                },
+                                afterLabel: function(context) {
+                                    // Only add direction info for Wind Speed dataset
+                                    if (context.dataset.windDirections && context.dataIndex !== undefined) {
+                                        const direction = context.dataset.windDirections[context.dataIndex];
+                                        const cardinalDir = getCardinalDirection(direction);
+                                        return `↑ Direction: from ${cardinalDir} (${direction}°)`;
+                                    }
+                                    return null;
                                 }
                             }
                         }
