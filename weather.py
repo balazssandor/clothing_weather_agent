@@ -48,6 +48,7 @@ class HourlyForecastPoint:
     wind_speed: float
     wind_gusts: Optional[float]
     weather_code: Optional[int]
+    wind_direction: Optional[float]
     conditions: str                 # resolved text
 
 
@@ -71,6 +72,7 @@ class TomorrowWindowSummary:
     wind_max: float
     gust_max: Optional[float]
     wind_unit: str
+    dominant_wind_direction: Optional[float]
 
     dominant_conditions: str
 
@@ -118,6 +120,7 @@ def _get_tomorrow_weather_report_internal(
                 "wind_speed_10m",
                 "wind_gusts_10m",
                 "weather_code",
+                "wind_direction_10m",
             ]
         ),
     }
@@ -137,6 +140,7 @@ def _get_tomorrow_weather_report_internal(
     wind_speeds: List[float] = hourly.get("wind_speed_10m") or []
     gusts: List[Optional[float]] = hourly.get("wind_gusts_10m") or []
     codes: List[Optional[int]] = hourly.get("weather_code") or []
+    wind_directions: List[Optional[float]] = hourly.get("wind_direction_10m") or []
 
     if not times:
         raise RuntimeError("No hourly 'time' data returned by Open-Meteo")
@@ -170,6 +174,7 @@ def _get_tomorrow_weather_report_internal(
                 wind_speed=float(safe_get(wind_speeds, i)),
                 wind_gusts=(float(safe_get(gusts, i)) if safe_get(gusts, i) is not None else None),
                 weather_code=(int(code) if code is not None else None),
+                wind_direction=(float(safe_get(wind_directions, i)) if safe_get(wind_directions, i) is not None else None),
                 conditions=cond,
             )
         )
@@ -198,6 +203,13 @@ def _get_tomorrow_weather_report_internal(
         tied = [code for code, cnt in c.items() if cnt == top_count]
         chosen = max(tied)
         dominant_text = _WMO_CODE_TO_TEXT.get(int(chosen), f"weather code {chosen}")
+
+    # Calculate dominant wind direction
+    wind_directions_present = [p.wind_direction for p in points if p.wind_direction is not None]
+    dominant_wind_direction = None
+    if wind_directions_present:
+        # Simple average for now, more complex circular mean might be needed for better accuracy
+        dominant_wind_direction = sum(wind_directions_present) / len(wind_directions_present)
 
     caution_reasons: List[str] = []
     if precip_prob_max is not None and precip_prob_max >= 60:
@@ -233,6 +245,7 @@ def _get_tomorrow_weather_report_internal(
         wind_max=wind_max,
         gust_max=gust_max,
         wind_unit=units.get("wind_speed_10m", "km/h"),
+        dominant_wind_direction=dominant_wind_direction,
         dominant_conditions=dominant_text,
     )
 
@@ -241,11 +254,12 @@ def _get_tomorrow_weather_report_internal(
     wind_u = units.get("wind_speed_10m", "km/h")
 
     lines = []
-    lines.append("Hour | Temp | Precip | Precip% | Wind | Gusts | Conditions")
-    lines.append("-----|------|--------|---------|------|-------|-----------")
+    lines.append("Hour | Temp | Precip | Precip% | Wind | Gusts | Wind Dir | Conditions")
+    lines.append("-----|------|--------|---------|------|-------|----------|-----------")
     for p in points:
         prob_str = f"{p.precipitation_probability:.0f}%" if p.precipitation_probability is not None else "—"
         gust_str = f"{p.wind_gusts:.0f}{wind_u}" if p.wind_gusts is not None else "—"
+        wind_dir_str = f"{p.wind_direction:.0f}°" if p.wind_direction is not None else "—"
         lines.append(
             f"{p.hour:02d}:00 | "
             f"{p.temperature:.1f}{temp_u} | "
@@ -253,6 +267,7 @@ def _get_tomorrow_weather_report_internal(
             f"{prob_str:>6} | "
             f"{p.wind_speed:.0f}{wind_u} | "
             f"{gust_str:>5} | "
+            f"{wind_dir_str:>8} | "
             f"{p.conditions}"
         )
 
@@ -274,6 +289,7 @@ def _get_tomorrow_weather_report_internal(
         f"- Temperature: {temp_min:.1f}{temp_u} to {temp_max:.1f}{temp_u}.\n"
         f"- Precipitation: about {precip_total:.1f}{pr_u} total. {prob_phrase}\n"
         f"- Wind: average {wind_avg:.0f}{wind_u}, max {wind_max:.0f}{wind_u}.{gust_phrase}\n"
+        f"- Dominant Wind Direction: {dominant_wind_direction:.0f}°\n"
         f"- Recommendation: {suggestion}\n\n"
         f"Hourly breakdown:\n" + "\n".join(lines)
     )

@@ -768,6 +768,7 @@
             .temp-header h3 {
                 font-size: 1em;
             }
+
         }
 
         @media (max-width: 480px) {
@@ -821,7 +822,7 @@
 <body>
     <!-- Safety Popup Modal -->
     <div id="safety-modal" class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content">poi
             <div class="modal-header">
                 <h2>⛰️ Important Safety Notice</h2>
             </div>
@@ -1056,6 +1057,55 @@
 
         let chartInstances = {};
 
+        // Helper function to convert degrees to cardinal direction
+        function getCardinalDirection(degrees) {
+            const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            const index = Math.round((degrees % 360) / 22.5) % 16;
+            return directions[index];
+        }
+
+        // Chart.js plugin to draw wind direction arrows
+        const windDirectionPlugin = {
+            id: 'windDirectionArrows',
+            afterDatasetsDraw: function(chart) {
+                const ctx = chart.ctx;
+                const meta = chart.getDatasetMeta(2); // Wind Speed dataset (index 2)
+
+                if (!meta || !chart.data.datasets[2].windDirections) return;
+
+                const windDirections = chart.data.datasets[2].windDirections;
+                const windColor = 'rgb(14, 165, 233)';
+
+                meta.data.forEach((point, index) => {
+                    const direction = windDirections[index];
+                    if (direction === undefined || direction === null) return;
+
+                    const x = point.x;
+                    const y = point.y - 20; // Offset 20px above the data point for better visibility
+
+                    ctx.save();
+                    ctx.translate(x, y);
+                    // Rotate by direction + 180° to show where wind is blowing TO (not FROM)
+                    ctx.rotate(((direction + 180) * Math.PI) / 180);
+
+                    // Draw arrow (larger and more visible)
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12);
+                    ctx.lineTo(-5, -2);
+                    ctx.lineTo(0, -4);
+                    ctx.lineTo(5, -2);
+                    ctx.closePath();
+                    ctx.fillStyle = windColor;
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.restore();
+                });
+            }
+        };
+
         // Create a weather chart
         function createWeatherChart(canvasId, hourlyData) {
             const canvas = document.getElementById(canvasId);
@@ -1074,9 +1124,11 @@
             const temperaturesFeel = hourlyData.map(d => d.temperature_feel);
             const precipitation = hourlyData.map(d => d.precipitation);
             const windSpeed = hourlyData.map(d => d.wind_speed);
+            const windDirections = hourlyData.map(d => d.wind_direction || 0);
 
             const newChart = new Chart(ctx, {
                 type: 'line',
+                plugins: [windDirectionPlugin],
                 data: {
                     labels: hours,
                     datasets: [
@@ -1105,7 +1157,7 @@
                             borderWidth: 2,
                         },
                         {
-                            label: 'Wind Speed (km/h)',
+                            label: 'Wind Speed (km/h) ↑ Direction',
                             data: windSpeed,
                             borderColor: 'rgb(14, 165, 233)',
                             backgroundColor: 'rgba(14, 165, 233, 0.1)',
@@ -1114,6 +1166,7 @@
                             yAxisID: 'y1',
                             pointRadius: 4,
                             pointHoverRadius: 6,
+                            windDirections: windDirections,
                         },
                         {
                             label: 'Precipitation (mm)',
@@ -1163,6 +1216,12 @@
                                         label += ' °C';
                                     } else if (context.dataset.label.includes('Wind')) {
                                         label += ' km/h';
+                                        // Add wind direction info (meteorological convention: direction wind is FROM)
+                                        if (context.dataset.windDirections && context.dataIndex !== undefined) {
+                                            const direction = context.dataset.windDirections[context.dataIndex];
+                                            const cardinalDir = getCardinalDirection(direction);
+                                            label += ` from ${cardinalDir} (${direction}°)`;
+                                        }
                                     } else if (context.dataset.label.includes('Precipitation')) {
                                         label += ' mm';
                                     }

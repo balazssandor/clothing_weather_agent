@@ -168,41 +168,30 @@ def _generate_clothing_advice_from_json(points: List[HourlyForecastPoint], locat
     return '\n'.join(lines)
 
 
-def _generate_report_text(points: List[HourlyForecastPoint], timezone: str, location: dict) -> str:
+def _generate_report_text(points: List[HourlyForecastPoint], summary: TomorrowWindowSummary, location: dict) -> str:
     """Generate a formatted weather report text for the given hourly points."""
     if not points:
         return "No data available"
 
-    temp_min = min(p.temperature for p in points)
-    temp_max = max(p.temperature for p in points)
-    precip_total = sum(p.precipitation for p in points)
-
-    probs = [p.precipitation_probability for p in points if p.precipitation_probability is not None]
-    precip_prob_max = max(probs) if probs else None
-
-    wind_avg = sum(p.wind_speed for p in points) / len(points)
-    wind_max = max(p.wind_speed for p in points)
-    gust_vals = [p.wind_gusts for p in points if p.wind_gusts is not None]
-    gust_max = max(gust_vals) if gust_vals else None
-
-    from collections import Counter
-    codes_present = [p.weather_code for p in points if p.weather_code is not None]
-    if codes_present:
-        c = Counter(codes_present)
-        top_count = c.most_common(1)[0][1]
-        tied = [code for code, cnt in c.items() if cnt == top_count]
-        chosen = max(tied)
-        from weather import _WMO_CODE_TO_TEXT
-        dominant_text = _WMO_CODE_TO_TEXT.get(int(chosen), f"weather code {chosen}")
-    else:
-        dominant_text = "unknown conditions"
+    # Use data from the summary object passed in
+    temp_min = summary.temp_min
+    temp_max = summary.temp_max
+    precip_total = summary.precip_total
+    precip_prob_max = summary.precip_prob_max
+    wind_avg = summary.wind_avg
+    wind_max = summary.wind_max
+    gust_max = summary.gust_max
+    dominant_text = summary.dominant_conditions
+    timezone = summary.timezone
+    dominant_wind_direction = summary.dominant_wind_direction
 
     lines = []
-    lines.append("Hour | Temp | Precip | Precip% | Wind | Gusts | Conditions")
-    lines.append("-----|------|--------|---------|------|-------|-----------")
+    lines.append("Hour | Temp | Precip | Precip% | Wind | Gusts | Wind Dir | Conditions")
+    lines.append("-----|------|--------|---------|------|-------|----------|-----------")
     for p in points:
         prob_str = f"{p.precipitation_probability:.0f}%" if p.precipitation_probability is not None else "—"
         gust_str = f"{p.wind_gusts:.0f}km/h" if p.wind_gusts is not None else "—"
+        wind_dir_str = f"{p.wind_direction:.0f}°" if p.wind_direction is not None else "—"
         lines.append(
             f"{p.hour:02d}:00 | "
             f"{p.temperature:.1f}°C | "
@@ -210,6 +199,7 @@ def _generate_report_text(points: List[HourlyForecastPoint], timezone: str, loca
             f"{prob_str:>6} | "
             f"{p.wind_speed:.0f}km/h | "
             f"{gust_str:>5} | "
+            f"{wind_dir_str:>8} | "
             f"{p.conditions}"
         )
 
@@ -231,7 +221,8 @@ def _generate_report_text(points: List[HourlyForecastPoint], timezone: str, loca
         f"- Dominant conditions: {dominant_text}.\n"
         f"- Temperature: {temp_min:.1f}°C to {temp_max:.1f}°C.\n"
         f"- Precipitation: about {precip_total:.1f}mm total. {prob_phrase}\n"
-        f"- Wind: average {wind_avg:.0f}km/h, max {wind_max:.0f}km/h.{gust_phrase}\n\n"
+        f"- Wind: average {wind_avg:.0f}km/h, max {wind_max:.0f}km/h.{gust_phrase}\n"
+        f"- Dominant Wind Direction: {dominant_wind_direction:.0f}°\n\n"
         f"Hourly breakdown:\n" + "\n".join(lines)
     )
 
@@ -270,18 +261,48 @@ def main():
             print(f"Loading cached weather data from {weather_cache_path}")
             with open(weather_cache_path, 'r') as f:
                 cached_data = json.load(f)
-                report_24h = cached_data['weather_report_text']
                 summary_24h_dict = cached_data['weather_summary']
-                # Reconstruct dataclass from dict
-                summary_24h = TomorrowWindowSummary(**summary_24h_dict)
-                # Reconstruct hourly points (remove temperature_feel if present, it will be recalculated)
-                points_24h = []
-                for p in cached_data['hourly_points']:
-                    # Remove enriched fields not in dataclass
-                    p_clean = {k: v for k, v in p.items() if k != 'temperature_feel'}
-                    points_24h.append(HourlyForecastPoint(**p_clean))
-        else:
+                
+                # Check for 'dominant_wind_direction' to handle older cache formats
+                if 'dominant_wind_direction' not in summary_24h_dict:
+                    print(f"⚠️  Cached data for {loc['name']} is outdated (missing dominant_wind_direction). Re-fetching from API...")
+                    os.remove(weather_cache_path) # Invalidate old cache
+                    # Force re-fetch by falling through to the 'else' block
+                else:
+                    report_24h = cached_data['weather_report_text']
+                    # Reconstruct dataclass from dict
+                    summary_24h = TomorrowWindowSummary(**summary_24h_dict)
+                    # Reconstruct hourly points (remove temperature_feel if present, it will be recalculated)
+                    points_24h = []
+                    for p in cached_data['hourly_points']:
+                        # Remove enriched fields not in dataclass
+                        p_clean = {k: v for k, v in p.items() if k != 'temperature_feel'}
+                        points_24h.append(HourlyForecastPoint(**p_clean))
+        
+        # If cache was invalid or didn't exist, fetch new data
+        if not os.path.exists(weather_cache_path): # Check again if it was removed
             print("Fetching weather data from API...")
+            # Fetch full 24h weather data
+            report_24h, summary_24h, points_24h = _get_tomorrow_weather_report_internal(
+                loc['latitude'],
+                loc['longitude'],
+                0,
+                23
+            )
+
+            # Save weather data immediately to cache
+            cache_data = {
+                "location_data": loc,
+                "weather_report_text": report_24h,
+                "weather_summary": summary_24h.__dict__,
+                "hourly_points": [_enrich_hourly_point(p) for p in points_24h]
+            }
+            with open(weather_cache_path, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+            print(f"Weather data cached to {weather_cache_path}")
+
+        # Filter to 7am-10pm for clothing advice
+
             # Fetch full 24h weather data
             report_24h, summary_24h, points_24h = _get_tomorrow_weather_report_internal(
                 loc['latitude'],
@@ -306,7 +327,7 @@ def main():
         is_snowy = any(p.weather_code in snow_weather_codes for p in points_7_22)
 
         # Generate a weather report summary for 7am-10pm window
-        report_7_22 = _generate_report_text(points_7_22, summary_24h.timezone, loc)
+        report_7_22 = _generate_report_text(points_7_22, summary_24h, loc)
 
         # Generate clothing advice for all languages
         languages = ['en', 'ro', 'hu']
