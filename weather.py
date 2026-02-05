@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
+from collections import defaultdict
 import requests
 
 
@@ -52,6 +53,27 @@ class HourlyForecastPoint:
     conditions: str                 # resolved text
 
 
+@dataclass
+class WindDirectionStats:
+    """Statistics for wind from a specific direction."""
+    direction: str  # N, NE, E, SE, S, SW, W, NW
+    percentage: float  # Percentage of time wind was from this direction
+    avg_speed: float  # Average wind speed (km/h)
+    max_gust: float  # Maximum gust (km/h)
+    hours_count: int  # Number of hours with this direction
+
+
+@dataclass
+class HistoricalWindAnalysis:
+    """Analysis of historical wind patterns for avalanche risk assessment."""
+    date_analyzed: str  # Date of the historical data (YYYY-MM-DD)
+    total_hours: int  # Total hours analyzed
+    direction_stats: List[WindDirectionStats]  # Stats for each direction, sorted by percentage
+    dominant_direction: str  # Most common wind direction
+    avg_wind_speed: float  # Overall average wind speed
+    max_gust: float  # Maximum gust observed
+
+
 @dataclass(frozen=True)
 class TomorrowWindowSummary:
     latitude: float
@@ -84,11 +106,15 @@ def _get_tomorrow_weather_report_internal(
     start_hour: int,
     end_hour: int,
     *,
+    day_offset: int = 1,
     timeout_seconds: int = 20,
 ) -> Tuple[str, TomorrowWindowSummary, List[HourlyForecastPoint]]:
     """
-    Fetch Open-Meteo hourly forecast for tomorrow (local timezone at the coordinates)
+    Fetch Open-Meteo hourly forecast for a future day (local timezone at the coordinates)
     and craft a readable report focusing on a specified time window.
+
+    Args:
+        day_offset: Number of days from today (1 = tomorrow, 2 = day after, etc.)
 
     Returns:
         (report_text, summary_struct, hourly_points)
@@ -102,16 +128,16 @@ def _get_tomorrow_weather_report_internal(
     if not (0 <= start_hour <= 23 and 0 <= end_hour <= 23):
         raise ValueError("start_hour and end_hour must be between 0 and 23")
 
-    tomorrow = date.today() + timedelta(days=1)
-    tomorrow_str = tomorrow.isoformat()
+    forecast_date = date.today() + timedelta(days=day_offset)
+    forecast_date_str = forecast_date.isoformat()
 
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": latitude,
         "longitude": longitude,
         "timezone": "auto",
-        "start_date": tomorrow_str,
-        "end_date": tomorrow_str,
+        "start_date": forecast_date_str,
+        "end_date": forecast_date_str,
         "hourly": ",".join(
             [
                 "temperature_2m",
@@ -154,7 +180,7 @@ def _get_tomorrow_weather_report_internal(
     points: List[HourlyForecastPoint] = []
     for i, t in enumerate(times):
         dt = datetime.fromisoformat(t)
-        if dt.date().isoformat() != tomorrow_str:
+        if dt.date().isoformat() != forecast_date_str:
             continue
         if not (start_hour <= dt.hour <= end_hour):
             continue
@@ -335,6 +361,135 @@ def get_tomorrow_weather_report(
     return _get_tomorrow_weather_report_internal(
         latitude, longitude, 0, 23, timeout_seconds=timeout_seconds
     )
+
+
+def degrees_to_cardinal(degrees: Optional[float]) -> str:
+    """Convert wind direction in degrees to 8-point compass direction."""
+    if degrees is None:
+        return "N/A"
+
+    # Normalize to 0-360
+    degrees = degrees % 360
+
+    # 8 directions, each covering 45 degrees
+    # N: 337.5-22.5, NE: 22.5-67.5, E: 67.5-112.5, etc.
+    directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    index = round(degrees / 45) % 8
+    return directions[index]
+
+
+def get_historical_wind_analysis(
+    latitude: float,
+    longitude: float,
+    analysis_date: date,
+    *,
+    days_back: int = 7,
+    timeout_seconds: int = 20
+) -> HistoricalWindAnalysis:
+    """
+    Fetch and analyze historical wind data for the past N days before the analysis_date.
+    This is useful for avalanche risk assessment and understanding snow transport patterns.
+
+    Args:
+        latitude: Location latitude
+        longitude: Location longitude
+        analysis_date: The forecast date (will fetch data for days BEFORE this)
+        days_back: Number of days to analyze (default: 7)
+        timeout_seconds: API timeout
+
+    Returns:
+        HistoricalWindAnalysis with wind direction statistics
+    """
+    # Fetch data for the past N days
+    end_date = analysis_date - timedelta(days=1)  # Day before forecast
+    start_date = end_date - timedelta(days=days_back - 1)  # Go back N days
+
+    start_date_str = start_date.isoformat()
+    end_date_str = end_date.isoformat()
+    date_range_str = f"{start_date_str} to {end_date_str}"
+
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "timezone": "auto",
+        "start_date": start_date_str,
+        "end_date": end_date_str,
+        "hourly": "wind_speed_10m,wind_gusts_10m,wind_direction_10m",
+    }
+
+    resp = requests.get(url, params=params, timeout=timeout_seconds)
+    resp.raise_for_status()
+    data: Dict[str, Any] = resp.json()
+
+    hourly = data.get("hourly") or {}
+    wind_speeds: List[Optional[float]] = hourly.get("wind_speed_10m") or []
+    gusts: List[Optional[float]] = hourly.get("wind_gusts_10m") or []
+    wind_directions: List[Optional[float]] = hourly.get("wind_direction_10m") or []
+
+    # Analyze wind by direction
+    direction_data = defaultdict(lambda: {"speeds": [], "gusts": [], "count": 0})
+
+    total_hours = 0
+    total_speed = 0.0
+    max_gust_overall = 0.0
+
+    for i in range(len(wind_directions)):
+        direction_deg = wind_directions[i] if i < len(wind_directions) else None
+        speed = wind_speeds[i] if i < len(wind_speeds) else None
+        gust = gusts[i] if i < len(gusts) else None
+
+        if direction_deg is None or speed is None:
+            continue
+
+        cardinal_dir = degrees_to_cardinal(direction_deg)
+        direction_data[cardinal_dir]["count"] += 1
+        direction_data[cardinal_dir]["speeds"].append(speed)
+
+        if gust is not None:
+            direction_data[cardinal_dir]["gusts"].append(gust)
+            max_gust_overall = max(max_gust_overall, gust)
+
+        total_hours += 1
+        total_speed += speed
+
+    # Calculate statistics for each direction
+    direction_stats = []
+    for direction in ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']:
+        data_for_dir = direction_data[direction]
+        count = data_for_dir["count"]
+
+        if count == 0:
+            continue
+
+        percentage = (count / total_hours * 100) if total_hours > 0 else 0
+        avg_speed = sum(data_for_dir["speeds"]) / count
+        max_gust = max(data_for_dir["gusts"]) if data_for_dir["gusts"] else 0.0
+
+        direction_stats.append(WindDirectionStats(
+            direction=direction,
+            percentage=percentage,
+            avg_speed=avg_speed,
+            max_gust=max_gust,
+            hours_count=count
+        ))
+
+    # Sort by percentage (most common first)
+    direction_stats.sort(key=lambda x: x.percentage, reverse=True)
+
+    # Determine dominant direction
+    dominant_direction = direction_stats[0].direction if direction_stats else "N/A"
+    avg_wind_speed = total_speed / total_hours if total_hours > 0 else 0.0
+
+    return HistoricalWindAnalysis(
+        date_analyzed=date_range_str,
+        total_hours=total_hours,
+        direction_stats=direction_stats,
+        dominant_direction=dominant_direction,
+        avg_wind_speed=avg_wind_speed,
+        max_gust=max_gust_overall
+    )
+
 
 def wind_chill_with_gusts(temp_c, wind_kmh, gust_kmh=None):
     """
