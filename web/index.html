@@ -174,9 +174,7 @@
         }
 
         .header .subtitle {
-            font-size: 1.2em;
-            opacity: 0.95;
-            font-weight: 500;
+            display: none;
         }
 
         /* Avalanche Alert */
@@ -657,8 +655,8 @@
             padding: 16px;
             border-radius: 12px;
             border: 1px solid rgba(59, 130, 246, 0.3);
-            min-width: 200px;
-            max-width: 220px;
+            min-width: 280px;
+            max-width: 300px;
             flex-shrink: 0;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.1);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -871,6 +869,75 @@
             color: var(--danger);
         }
 
+        /* Mountain Aspect Risk Diagram */
+        .aspect-diagram-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+        }
+
+        .aspect-diagram {
+            position: relative;
+            width: 280px;
+            height: 280px;
+        }
+
+        .aspect-diagram svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+        }
+
+        .aspect-segment {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .aspect-segment:hover {
+            opacity: 0.8;
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        .aspect-label {
+            font-weight: 700;
+            font-size: 16px;
+            fill: white;
+            text-anchor: middle;
+            pointer-events: none;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .aspect-center-label {
+            font-size: 14px;
+            font-weight: 600;
+            fill: var(--text-primary);
+            text-anchor: middle;
+        }
+
+        .risk-legend {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 12px;
+            font-size: 0.85em;
+        }
+
+        .risk-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .risk-color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
         /* Loading State */
         .loading {
             text-align: center;
@@ -913,18 +980,14 @@
 
         @media (max-width: 480px) {
             .advice-section {
-                min-width: 260px;
-                max-width: 280px;
+                min-width: 300px;
+                max-width: 320px;
             }
         }
 
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.8em;
-            }
-
-            .header .subtitle {
-                font-size: 1em;
             }
 
             .date-selector {
@@ -961,6 +1024,21 @@
 
             .search-icon {
                 right: 14px;
+            }
+
+            .aspect-diagram {
+                width: 220px;
+                height: 220px;
+            }
+
+            .risk-legend {
+                flex-wrap: wrap;
+                gap: 10px;
+                font-size: 0.75em;
+            }
+
+            .aspect-diagram-container {
+                padding: 10px;
             }
         }
     </style>
@@ -1060,7 +1138,7 @@
                 temperature: "Temperature",
                 precipitation: "Precipitation",
                 wind: "Wind",
-                dateFormat: "{date} • Full Day (24h) • Ski Touring Conditions & Clothing Guide"
+                dateFormat: "Ski Touring Conditions & Advice"
             },
             ro: {
                 title: "⛰️ Vreme Munții României",
@@ -1076,7 +1154,7 @@
                 temperature: "Temperatură",
                 precipitation: "Precipitații",
                 wind: "Vânt",
-                dateFormat: "{date} • Toată Ziua (24h) • Condiții Schi-Tură & Ghid Îmbrăcăminte"
+                dateFormat: "Condiții Schi-Tură & Sfaturi"
             },
             hu: {
                 title: "⛰️ Román Hegyi Időjárás",
@@ -1092,7 +1170,7 @@
                 temperature: "Hőmérséklet",
                 precipitation: "Csapadék",
                 wind: "Szél",
-                dateFormat: "{date} • Egész Nap (24ó) • Sítúra Feltételek & Öltözködési Útmutató"
+                dateFormat: "Sítúra Feltételek & Tanácsok"
             }
         };
 
@@ -1291,6 +1369,87 @@
             return directions[index];
         }
 
+        // Get risk color based on wind loading percentage
+        function getRiskColor(percentage) {
+            if (percentage >= 30) return '#dc2626'; // High risk - dark red
+            if (percentage >= 20) return '#ef4444'; // Elevated risk - red
+            if (percentage >= 15) return '#f97316'; // Moderate risk - orange
+            if (percentage >= 10) return '#f59e0b'; // Low-moderate risk - amber
+            if (percentage >= 5) return '#eab308';  // Low risk - yellow
+            return '#10b981'; // Minimal risk - green
+        }
+
+        // Create SVG aspect diagram showing avalanche risk by slope direction
+        function createAspectDiagram(windData) {
+            const directionMap = {
+                'N': 'S', 'NE': 'SW', 'E': 'W', 'SE': 'NW',
+                'S': 'N', 'SW': 'NE', 'W': 'E', 'NW': 'SE'
+            };
+
+            // Calculate risk for each aspect based on opposite wind direction
+            const aspects = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const aspectRisks = {};
+
+            aspects.forEach(aspect => {
+                // Find wind from opposite direction
+                const oppositeDir = directionMap[aspect];
+                const windFromOpposite = windData.direction_stats.find(s => s.direction === oppositeDir);
+                aspectRisks[aspect] = windFromOpposite ? windFromOpposite.percentage : 0;
+            });
+
+            // Create SVG with 8 segments
+            const centerX = 140;
+            const centerY = 140;
+            const radius = 120;
+            const segmentAngle = 45; // 360 / 8
+
+            let svgPaths = '';
+
+            aspects.forEach((aspect, index) => {
+                const startAngle = (index * segmentAngle - 90 - segmentAngle / 2) * Math.PI / 180;
+                const endAngle = (index * segmentAngle - 90 + segmentAngle / 2) * Math.PI / 180;
+
+                const x1 = centerX + radius * Math.cos(startAngle);
+                const y1 = centerY + radius * Math.sin(startAngle);
+                const x2 = centerX + radius * Math.cos(endAngle);
+                const y2 = centerY + radius * Math.sin(endAngle);
+
+                const risk = aspectRisks[aspect];
+                const color = getRiskColor(risk);
+
+                // Create path for segment
+                const pathData = `M ${centerX},${centerY} L ${x1},${y1} A ${radius},${radius} 0 0,1 ${x2},${y2} Z`;
+
+                svgPaths += `
+                    <path class="aspect-segment" d="${pathData}" fill="${color}"
+                          data-aspect="${aspect}" data-risk="${risk.toFixed(1)}"
+                          title="${aspect} facing slopes: ${risk.toFixed(1)}% wind loading">
+                    </path>
+                `;
+
+                // Add label
+                const labelAngle = (index * segmentAngle - 90) * Math.PI / 180;
+                const labelX = centerX + (radius * 0.75) * Math.cos(labelAngle);
+                const labelY = centerY + (radius * 0.75) * Math.sin(labelAngle);
+
+                svgPaths += `
+                    <text class="aspect-label" x="${labelX}" y="${labelY + 5}">
+                        ${aspect}
+                    </text>
+                `;
+            });
+
+            return `
+                <svg viewBox="0 0 280 280">
+                    ${svgPaths}
+                    <circle cx="${centerX}" cy="${centerY}" r="40" fill="rgba(15, 23, 42, 0.9)" stroke="var(--border)" stroke-width="2"/>
+                    <text class="aspect-center-label" x="${centerX}" y="${centerY - 5}">Avalanche</text>
+                    <text class="aspect-center-label" x="${centerX}" y="${centerY + 10}">Risk</text>
+                    <text class="aspect-center-label" x="${centerX}" y="${centerY + 25}" style="font-size: 11px;">by Aspect</text>
+                </svg>
+            `;
+        }
+
         // Create HTML for wind analysis display
         function createWindAnalysisHtml(windData) {
             const directionMap = {
@@ -1326,6 +1485,35 @@
                         <div class="wind-stat">
                             <div class="wind-stat-label">Hours Analyzed</div>
                             <div class="wind-stat-value">${windData.total_hours}h</div>
+                        </div>
+                    </div>
+
+                    <div class="aspect-diagram-container">
+                        <div class="aspect-diagram">
+                            ${createAspectDiagram(windData)}
+                        </div>
+                    </div>
+
+                    <div class="risk-legend">
+                        <div class="risk-legend-item">
+                            <div class="risk-color-box" style="background: #10b981;"></div>
+                            <span>Minimal</span>
+                        </div>
+                        <div class="risk-legend-item">
+                            <div class="risk-color-box" style="background: #eab308;"></div>
+                            <span>Low</span>
+                        </div>
+                        <div class="risk-legend-item">
+                            <div class="risk-color-box" style="background: #f59e0b;"></div>
+                            <span>Moderate</span>
+                        </div>
+                        <div class="risk-legend-item">
+                            <div class="risk-color-box" style="background: #f97316;"></div>
+                            <span>Elevated</span>
+                        </div>
+                        <div class="risk-legend-item">
+                            <div class="risk-color-box" style="background: #dc2626;"></div>
+                            <span>High</span>
                         </div>
                     </div>
 
@@ -1653,43 +1841,57 @@
                 // Use local path with date directory or S3
                 if (useLocalPath) {
                     response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
+                    console.log(`Fetching advice (local): ../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
                 } else {
                     // Try S3 first (only works for current/latest forecast)
                     response = await fetch(`./${adviceFilename}`);
+                    console.log(`Fetching advice (S3): ./${adviceFilename}`);
 
                     // If S3 fails, try local path
                     if (!response.ok) {
-                        console.log(`S3 not found, trying local: ../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
+                        console.log(`S3 not found (${response.status}), trying local: ../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
                         response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
                     }
                 }
 
                 if (response.ok) {
                     adviceMarkdown = await response.text();
-                    console.log(`✓ Loaded advice for ${location.name}, length: ${adviceMarkdown.length}`);
-                    console.log('First 200 chars:', adviceMarkdown.substring(0, 200));
-                    adviceSections = parseAdviceMarkdown(adviceMarkdown);
-                    console.log(`Parsed ${adviceSections.length} sections for ${location.name}`);
-                    if (adviceSections.length > 0) {
-                        console.log('First section:', adviceSections[0]);
+                    console.log(`✓ Loaded advice for ${location.name} (${currentLanguage}), length: ${adviceMarkdown.length}`);
+
+                    if (adviceMarkdown.trim().length === 0) {
+                        console.warn(`⚠️ Advice file is empty for ${location.name}`);
+                        throw new Error('Empty advice file');
                     }
+
+                    adviceSections = parseAdviceMarkdown(adviceMarkdown);
+                    console.log(`✓ Parsed ${adviceSections.length} sections for ${location.name}`);
                 } else {
-                    console.warn(`❌ Failed to fetch advice for ${location.name}: ${response.status}`);
+                    console.error(`❌ Failed to fetch advice for ${location.name}: HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}`);
                 }
             } catch (error) {
                 console.error(`❌ Error loading advice for ${location.name}:`, error);
                 adviceSections = [{
-                    title: 'Error',
-                    content: [translations[currentLanguage].adviceNotAvailable],
+                    title: 'Loading Error',
+                    content: [
+                        `Could not load advice for ${location.name}`,
+                        `Language: ${currentLanguage}`,
+                        `Date: ${forecastDate}`,
+                        'Try refreshing the page or selecting a different date'
+                    ],
                     subsections: []
                 }];
             }
 
             if (adviceSections.length === 0) {
-                console.warn(`No sections parsed for ${location.name}`);
+                console.warn(`⚠️ No sections parsed for ${location.name}, creating fallback`);
                 adviceSections = [{
-                    title: translations[currentLanguage].noData,
-                    content: [translations[currentLanguage].noAdviceFound],
+                    title: 'No Advice Available',
+                    content: [
+                        `Advice data not available for ${location.name}`,
+                        'This may be due to missing forecast data',
+                        'Try selecting a different date or mountain range'
+                    ],
                     subsections: []
                 }];
             }
@@ -1852,8 +2054,7 @@
                 console.log(`📅 Loading data for selected date: ${selectedDate}`);
             }
 
-            const dateText = translations[currentLanguage].dateFormat.replace('{date}', formatDate(forecastDate));
-            subtitle.textContent = dateText;
+            subtitle.textContent = translations[currentLanguage].dateFormat;
 
             try {
                 // Load mountain locations (always from root, not date-specific)
