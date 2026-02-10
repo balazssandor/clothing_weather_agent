@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from datetime import date, timedelta
@@ -276,8 +277,16 @@ def _generate_report_text(points: List[HourlyForecastPoint], summary: TomorrowWi
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Generate ski touring clothing advice for mountain locations')
+    parser.add_argument('--use-cache', action='store_true', default=False,
+                        help='Use cached data if available (default: always fetch fresh)')
+    args = parser.parse_args()
+
+    use_cache = args.use_cache
     console = Console()
     print("Generating ski touring clothing advice for mountain locations...")
+    if not use_cache:
+        print("🔄 Cache disabled - fetching fresh data for all locations")
 
     with open('mountain_locations.json', 'r') as f:
         mountain_locations = json.load(f)
@@ -314,8 +323,9 @@ def main():
             base_filename = f"{loc['mountain_range'].replace(' ', '_').lower()}_{loc['zone'].replace(' ', '_')}"
             weather_cache_path = os.path.join(output_dir, f"{base_filename}_weather_data_24h.json")
 
-            # Check if we have cached weather data
-            if os.path.exists(weather_cache_path):
+            # Check if we have cached weather data (only if --use-cache is enabled)
+            cache_valid = False
+            if use_cache and os.path.exists(weather_cache_path):
                 print(f"Loading cached weather data from {weather_cache_path}")
                 with open(weather_cache_path, 'r') as f:
                     cached_data = json.load(f)
@@ -324,8 +334,6 @@ def main():
                     # Check for 'dominant_wind_direction' to handle older cache formats
                     if 'dominant_wind_direction' not in summary_24h_dict:
                         print(f"⚠️  Cached data for {loc['name']} is outdated (missing dominant_wind_direction). Re-fetching from API...")
-                        os.remove(weather_cache_path) # Invalidate old cache
-                        # Force re-fetch by falling through to the 'else' block
                     else:
                         report_24h = cached_data['weather_report_text']
                         # Reconstruct dataclass from dict
@@ -336,9 +344,10 @@ def main():
                             # Remove enriched fields not in dataclass
                             p_clean = {k: v for k, v in p.items() if k != 'temperature_feel'}
                             points_24h.append(HourlyForecastPoint(**p_clean))
+                        cache_valid = True
 
-            # If cache was invalid or didn't exist, fetch new data
-            if not os.path.exists(weather_cache_path): # Check again if it was removed
+            # Fetch new data if cache is disabled or invalid
+            if not cache_valid:
                 print("Fetching weather data from API...")
                 # Calculate which day offset to use (1 = tomorrow, 2 = day after, etc.)
                 day_offset = (forecast_date - date.today()).days
@@ -365,11 +374,13 @@ def main():
 
             # Fetch historical wind analysis for avalanche risk assessment
             wind_analysis_cache_path = os.path.join(output_dir, f"{base_filename}_wind_analysis.json")
-            if os.path.exists(wind_analysis_cache_path):
+            wind_analysis_dict = None
+            if use_cache and os.path.exists(wind_analysis_cache_path):
                 print(f"✓ Using cached wind analysis for {loc['name']}")
                 with open(wind_analysis_cache_path, 'r') as f:
                     wind_analysis_dict = json.load(f)
-            else:
+
+            if wind_analysis_dict is None:
                 print(f"📊 Analyzing historical wind patterns for {loc['name']}...")
                 try:
                     wind_analysis = get_historical_wind_analysis(
@@ -419,7 +430,7 @@ def main():
             for lang in languages:
                 model_advice_path = os.path.join(output_dir, f"{base_filename}_model_advice_{lang}.md")
 
-                if os.path.exists(model_advice_path):
+                if use_cache and os.path.exists(model_advice_path):
                     print(f"✓ Using cached clothing advice for {loc['name']} ({lang.upper()})")
                     continue
 
@@ -479,12 +490,10 @@ def main():
             print(f"Weather report (full day) saved to {weather_report_path}")
 
             # Save clothing advice as markdown (if it was newly generated)
-            if not os.path.exists(model_advice_path):
+            if not use_cache or not os.path.exists(model_advice_path):
                 with open(model_advice_path, 'w') as f:
                     f.write(clothing_advice)
                 print(f"Clothing advice saved to {model_advice_path}")
-            else:
-                print(f"Clothing advice already exists at {model_advice_path}")
 
             # Save hourly data for full 24h with temperature_feel enrichment
             hourly_data_path = os.path.join(output_dir, f"{base_filename}_hourly_data_full_day.json")
