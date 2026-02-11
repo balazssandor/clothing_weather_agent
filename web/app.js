@@ -1324,6 +1324,9 @@ async function loadLocations(selectedDate = null) {
         // Setup search functionality
         setupSearch();
 
+        // Create range filter buttons
+        createRangeFilters(Object.keys(groupedLocations));
+
         // Create bottom navigation
         createBottomNav(Object.keys(groupedLocations));
 
@@ -1407,93 +1410,160 @@ function updateBottomNavActive(rangeName) {
     });
 }
 
-// Setup search/filter functionality
-function setupSearch() {
+// Track active range filters
+let activeRangeFilters = new Set();
+
+// Merge similar range names into groups
+const RANGE_GROUPS = {
+    'retezat': ['muntii retezat', 'muntii retezat-godeanu']
+};
+
+// Get the filter key for a range name (handles merging)
+function getRangeFilterKey(rangeName) {
+    const lowerName = rangeName.toLowerCase();
+    for (const [groupKey, members] of Object.entries(RANGE_GROUPS)) {
+        if (members.includes(lowerName)) {
+            return groupKey;
+        }
+    }
+    // Default: use shortened name as key
+    return lowerName.replace(/^muntii\s+/i, '').replace(/-.*$/, '');
+}
+
+// Create range filter buttons
+function createRangeFilters(rangeNames) {
+    const container = document.getElementById('range-filters');
+    if (!container) return;
+
+    // Clear active filters when recreating buttons
+    activeRangeFilters.clear();
+    container.innerHTML = '';
+
+    // Group ranges and create unique filter buttons
+    const filterButtons = new Map(); // filterKey -> [rangeNames]
+
+    rangeNames.forEach(rangeName => {
+        const filterKey = getRangeFilterKey(rangeName);
+        if (!filterButtons.has(filterKey)) {
+            filterButtons.set(filterKey, []);
+        }
+        filterButtons.get(filterKey).push(rangeName.toLowerCase());
+    });
+
+    filterButtons.forEach((ranges, filterKey) => {
+        const btn = document.createElement('button');
+        btn.className = 'range-filter-btn';
+        // Capitalize first letter
+        btn.textContent = filterKey.charAt(0).toUpperCase() + filterKey.slice(1);
+        btn.dataset.ranges = JSON.stringify(ranges);
+        btn.onclick = () => toggleRangeFilter(btn, ranges);
+        container.appendChild(btn);
+    });
+}
+
+// Toggle range filter
+function toggleRangeFilter(btn, ranges) {
+    btn.classList.toggle('active');
+    const isActive = btn.classList.contains('active');
+
+    ranges.forEach(rangeName => {
+        if (isActive) {
+            activeRangeFilters.add(rangeName);
+        } else {
+            activeRangeFilters.delete(rangeName);
+        }
+    });
+
+    // Re-apply filters
+    applyFilters();
+}
+
+// Apply combined search text and range filters
+function applyFilters() {
     const searchInput = document.getElementById('search-input');
     const container = document.getElementById('locations-container');
-    let searchTimeout;
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    const sections = container.querySelectorAll('.mountain-range-section');
+    let visibleCount = 0;
 
-    searchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase().trim();
-        const sections = container.querySelectorAll('.mountain-range-section');
-        let visibleCount = 0;
-        let matchedLocations = [];
-        let matchedRanges = [];
+    sections.forEach(section => {
+        const rangeHeader = section.querySelector('.range-header h2');
+        const rangeName = rangeHeader.textContent.toLowerCase();
+        const cards = section.querySelectorAll('.location-card');
+        let visibleCardsInSection = 0;
 
-        sections.forEach(section => {
-            const rangeHeader = section.querySelector('.range-header h2');
-            const rangeName = rangeHeader.textContent.toLowerCase();
-            const cards = section.querySelectorAll('.location-card');
-            let visibleCardsInSection = 0;
+        // Check if range filter applies
+        const rangeFilterActive = activeRangeFilters.size > 0;
+        const rangeMatches = !rangeFilterActive || activeRangeFilters.has(rangeName);
 
-            cards.forEach(card => {
-                const locationName = card.querySelector('.card-header h3').textContent.toLowerCase();
-                const matches = searchTerm === '' ||
+        cards.forEach(card => {
+            const locationName = card.querySelector('.card-header h3').textContent.toLowerCase();
+
+            // Text search matches
+            const textMatches = searchTerm === '' ||
                               rangeName.includes(searchTerm) ||
                               locationName.includes(searchTerm);
 
-                if (matches) {
-                    card.style.display = '';
-                    visibleCardsInSection++;
-                    visibleCount++;
+            // Combined filter: must match both range filter (if active) AND text search
+            const matches = rangeMatches && textMatches;
 
-                    if (searchTerm !== '') {
-                        matchedLocations.push(locationName);
-                        if (!matchedRanges.includes(rangeName)) {
-                            matchedRanges.push(rangeName);
-                        }
-                    }
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            // Hide entire section if no cards are visible
-            if (visibleCardsInSection === 0) {
-                section.style.display = 'none';
+            if (matches) {
+                card.style.display = '';
+                visibleCardsInSection++;
+                visibleCount++;
             } else {
-                section.style.display = '';
+                card.style.display = 'none';
             }
         });
 
-        // Track search with debounce (wait 1 second after user stops typing)
+        // Hide entire section if no cards are visible
+        if (visibleCardsInSection === 0) {
+            section.style.display = 'none';
+        } else {
+            section.style.display = '';
+        }
+    });
+
+    // Show "no results" message if nothing matches
+    let noResultsMsg = container.querySelector('.no-results');
+    if (visibleCount === 0 && (searchTerm !== '' || activeRangeFilters.size > 0)) {
+        if (!noResultsMsg) {
+            noResultsMsg = document.createElement('div');
+            noResultsMsg.className = 'no-results';
+            container.appendChild(noResultsMsg);
+        }
+        const filterInfo = activeRangeFilters.size > 0
+            ? `filters: ${[...activeRangeFilters].join(', ')}${searchTerm ? ` + "${searchTerm}"` : ''}`
+            : `"${searchTerm}"`;
+        noResultsMsg.innerHTML = `
+            <div>No locations found matching ${filterInfo}</div>
+            <div style="margin-top: 10px; font-size: 0.9em;">Try adjusting your filters or search term</div>
+        `;
+        noResultsMsg.style.display = '';
+    } else if (noResultsMsg) {
+        noResultsMsg.style.display = 'none';
+    }
+}
+
+// Setup search/filter functionality
+function setupSearch() {
+    const searchInput = document.getElementById('search-input');
+    let searchTimeout;
+
+    searchInput.addEventListener('input', (e) => {
+        applyFilters();
+
+        const searchTerm = e.target.value.toLowerCase().trim();
+
+        // Track search with debounce
         if (searchTerm !== '') {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 trackEvent('search', {
                     search_term: searchTerm,
-                    results_count: visibleCount,
-                    matched_locations: matchedLocations.slice(0, 5).join(', '),
-                    matched_ranges: matchedRanges.join(', ')
+                    active_filters: [...activeRangeFilters].join(', ')
                 });
             }, 1000);
-        }
-
-        // Show "no results" message if nothing matches
-        let noResultsMsg = container.querySelector('.no-results');
-        if (visibleCount === 0 && searchTerm !== '') {
-            if (!noResultsMsg) {
-                noResultsMsg = document.createElement('div');
-                noResultsMsg.className = 'no-results';
-                noResultsMsg.innerHTML = `
-                    <div>No locations found matching "<strong>${e.target.value}</strong>"</div>
-                    <div style="margin-top: 10px; font-size: 0.9em;">Try searching by mountain range (e.g., "Fagaras") or location name (e.g., "Balea")</div>
-                `;
-                container.appendChild(noResultsMsg);
-            } else {
-                noResultsMsg.style.display = '';
-                noResultsMsg.innerHTML = `
-                    <div>No locations found matching "<strong>${e.target.value}</strong>"</div>
-                    <div style="margin-top: 10px; font-size: 0.9em;">Try searching by mountain range (e.g., "Fagaras") or location name (e.g., "Balea")</div>
-                `;
-            }
-
-            // Track failed search
-            trackEvent('search_no_results', {
-                search_term: searchTerm
-            });
-        } else if (noResultsMsg) {
-            noResultsMsg.style.display = 'none';
         }
     });
 }

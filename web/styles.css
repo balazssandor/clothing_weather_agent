@@ -303,13 +303,48 @@ body {
 .search-container {
     margin-bottom: 30px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
 }
 
 .search-wrapper {
     position: relative;
     width: 100%;
     max-width: 600px;
+}
+
+/* Range Filter Buttons */
+.range-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 800px;
+}
+
+.range-filter-btn {
+    padding: 6px 14px;
+    font-size: 0.85em;
+    font-weight: 500;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.range-filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.range-filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
 }
 
 .search-input {
@@ -1332,6 +1367,15 @@ body {
 
     .search-icon {
         right: 14px;
+    }
+
+    .range-filters {
+        gap: 6px;
+    }
+
+    .range-filter-btn {
+        padding: 5px 10px;
+        font-size: 0.75em;
     }
 
     .aspect-diagram {
