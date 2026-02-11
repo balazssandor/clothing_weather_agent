@@ -215,7 +215,8 @@ async function updateCardDate(cardId, newDate) {
             if (adviceSections[0].title.includes('Temperature')) {
                 const tempHeader = card.querySelector('.temp-header');
                 if (tempHeader) {
-                    tempHeader.innerHTML = `<h3>${adviceSections[0].title}</h3>`;
+                    // Preserve the snow-accumulation span when updating
+                    tempHeader.innerHTML = `<h3>${adviceSections[0].title}</h3><span class="snow-accumulation"></span>`;
                 }
                 adviceSections = adviceSections.slice(1);
             }
@@ -243,6 +244,18 @@ async function updateCardDate(cardId, newDate) {
         if (hourlyResponse.ok) {
             const hourlyData = await hourlyResponse.json();
             chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+
+            // Update snow accumulation in header
+            const { totalSnowCm } = calculateSnowInfo(hourlyData);
+            const snowEl = card.querySelector('.snow-accumulation');
+            if (snowEl) {
+                const snowFormatted = formatSnowAmount(totalSnowCm);
+                if (snowFormatted) {
+                    snowEl.innerHTML = `<span class="snow-badge">❄ ${snowFormatted}cm snow</span>`;
+                } else {
+                    snowEl.innerHTML = '';
+                }
+            }
 
             // Wait for canvas to be ready
             requestAnimationFrame(() => {
@@ -280,32 +293,8 @@ function getDateRange() {
     return dates;
 }
 
-// Create date selector buttons
-function createDateSelector() {
-    const container = document.getElementById('date-selector');
-    const dates = getDateRange();
-
-    container.innerHTML = '';
-
-    dates.forEach(dateInfo => {
-        const button = document.createElement('button');
-        button.className = 'date-btn';
-        if (dateInfo.isPast) button.classList.add('past');
-        if (dateInfo.isFuture) button.classList.add('future');
-
-        const dateLabel = formatDate(dateInfo.date);
-        button.innerHTML = `
-            <div>${dateInfo.label}</div>
-            <div class="date-label">${dateLabel}</div>
-        `;
-
-        button.onclick = () => selectDate(dateInfo.date);
-        button.dataset.date = dateInfo.date;
-
-        container.appendChild(button);
-    });
-
-    // Setup sticky date selector behavior
+// Setup sticky navigation behavior
+function initStickyNav() {
     setupStickyDateSelector();
 }
 
@@ -411,11 +400,6 @@ function selectDate(date) {
 
     // Remember current location before reloading
     locationToRestore = getCurrentVisibleLocation();
-
-    // Update active button
-    document.querySelectorAll('.date-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.date === date);
-    });
 
     // Update subtitle to show loading state
     const subtitle = document.getElementById('subtitle');
@@ -681,6 +665,73 @@ const windDirectionPlugin = {
     }
 };
 
+// Snow weather codes from Open-Meteo
+const SNOW_WEATHER_CODES = [71, 73, 75, 77, 85, 86]; // Snow fall, snow grains, snow showers
+
+// Format snow amount for display
+// Returns null if too small to show, otherwise formatted string
+function formatSnowAmount(cm) {
+    if (cm < 0.1) return null; // Don't show if less than 0.1cm
+    if (cm < 1) return cm.toFixed(1); // Show decimal for small amounts (e.g., "0.3")
+    return cm.toFixed(0); // Show integer for larger amounts (e.g., "5")
+}
+
+// Calculate snow accumulation from hourly data
+// Returns { totalSnowCm: number, isSnowByHour: boolean[] }
+function calculateSnowInfo(hourlyData) {
+    let totalPrecipMm = 0;
+    const isSnowByHour = hourlyData.map(d => {
+        // Consider it snow if:
+        // 1. Weather code indicates snow, OR
+        // 2. Temperature is below 2°C and there's precipitation
+        const isSnow = SNOW_WEATHER_CODES.includes(d.weather_code) ||
+                       (d.temperature < 2 && d.precipitation > 0);
+
+        if (isSnow && d.precipitation > 0) {
+            totalPrecipMm += d.precipitation;
+        }
+        return isSnow;
+    });
+
+    // Convert mm precipitation to cm snow (typical ratio 1mm water = 1cm snow)
+    const totalSnowCm = totalPrecipMm;
+
+    return { totalSnowCm, isSnowByHour };
+}
+
+// Chart.js plugin to draw snowflakes on snow precipitation bars
+const snowflakePlugin = {
+    id: 'snowflakePlugin',
+    afterDatasetsDraw(chart, args, options) {
+        const { ctx } = chart;
+        const precipDataset = chart.data.datasets.find(ds => ds.label && ds.label.includes('Precipitation'));
+        if (!precipDataset || !precipDataset.isSnowByHour) return;
+
+        const datasetIndex = chart.data.datasets.indexOf(precipDataset);
+        const meta = chart.getDatasetMeta(datasetIndex);
+
+        ctx.save();
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        meta.data.forEach((bar, index) => {
+            const value = precipDataset.data[index];
+            const isSnow = precipDataset.isSnowByHour[index];
+
+            if (value > 0 && isSnow) {
+                // Draw snowflake above the bar
+                const x = bar.x;
+                const y = bar.y - 5;
+                ctx.fillText('❄', x, y);
+            }
+        });
+
+        ctx.restore();
+    }
+};
+
 // Create a weather chart
 function createWeatherChart(canvasId, hourlyData) {
     const canvas = document.getElementById(canvasId);
@@ -702,9 +753,17 @@ function createWeatherChart(canvasId, hourlyData) {
     const windGust = hourlyData.map(d => d.wind_gusts || d.wind_speed);
     const windDirections = hourlyData.map(d => d.wind_direction || 0);
 
+    // Calculate snow info for precipitation bars
+    const { isSnowByHour } = calculateSnowInfo(hourlyData);
+
+    // Create background colors for precipitation bars (light blue for snow, blue for rain)
+    const precipColors = isSnowByHour.map(isSnow =>
+        isSnow ? 'rgba(173, 216, 230, 0.7)' : 'rgba(59, 130, 246, 0.5)'
+    );
+
     const newChart = new Chart(ctx, {
         type: 'line',
-        plugins: [windDirectionPlugin],
+        plugins: [windDirectionPlugin, snowflakePlugin],
         data: {
             labels: hours,
             datasets: [
@@ -760,9 +819,10 @@ function createWeatherChart(canvasId, hourlyData) {
                     label: 'Precipitation (mm)',
                     data: precipitation,
                     type: 'bar',
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    backgroundColor: precipColors,
                     yAxisID: 'y2',
                     order: 1,
+                    isSnowByHour: isSnowByHour, // Custom property for snowflake plugin
                 }
             ]
         },
@@ -883,6 +943,8 @@ function createWeatherChart(canvasId, hourlyData) {
                     type: 'linear',
                     display: false,
                     position: 'right',
+                    min: 0,
+                    suggestedMax: 5, // Minimum 5mm scale so small amounts don't appear maxed out
                     grid: {
                         drawOnChartArea: false,
                     },
@@ -1021,7 +1083,7 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
     // Extract temperature header if present
     let tempHeader = '';
     if (adviceSections.length > 0 && adviceSections[0].title.includes('Temperature')) {
-        tempHeader = `<div class="temp-header"><h3>${adviceSections[0].title}</h3></div>`;
+        tempHeader = `<div class="temp-header"><h3>${adviceSections[0].title}</h3><span class="snow-accumulation" id="snow-${baseFilename}"></span></div>`;
         adviceSections = adviceSections.slice(1); // Remove temperature section from cards
     }
 
@@ -1104,6 +1166,16 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 const hourlyData = await response.json();
                 console.log(`Loaded hourly data for ${location.name}, ${hourlyData.length} data points`);
                 createWeatherChart(canvasId, hourlyData);
+
+                // Update snow accumulation in header
+                const { totalSnowCm } = calculateSnowInfo(hourlyData);
+                const snowEl = document.getElementById(`snow-${baseFilename}`);
+                if (snowEl) {
+                    const snowFormatted = formatSnowAmount(totalSnowCm);
+                    snowEl.innerHTML = snowFormatted
+                        ? `<span class="snow-badge">❄ ${snowFormatted}cm snow</span>`
+                        : '';
+                }
 
                 // Track successful chart load
                 trackEvent('chart_loaded', {
@@ -1321,8 +1393,8 @@ function scrollToRange(rangeName) {
     const sectionId = `range-${rangeName.replace(/\s+/g, '-').toLowerCase()}`;
     const section = document.getElementById(sectionId);
     if (section) {
-        const dateSelector = document.querySelector('.date-selector');
-        const offset = dateSelector && dateSelector.classList.contains('sticky') ? 80 : 20;
+        const stickyNav = document.getElementById('sticky-nav');
+        const offset = stickyNav && stickyNav.classList.contains('sticky') ? stickyNav.offsetHeight + 20 : 20;
         const y = section.getBoundingClientRect().top + window.pageYOffset - offset;
         window.scrollTo({ top: y, behavior: 'smooth' });
     }
@@ -1842,8 +1914,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initLanguage();
     checkSafetyModal();
 
-    // Create date selector
-    createDateSelector();
+    // Setup sticky navigation
+    initStickyNav();
 
     // Auto-select tomorrow if available, otherwise today
     const tomorrow = getTomorrowDate();

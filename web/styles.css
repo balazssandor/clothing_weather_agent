@@ -948,6 +948,28 @@ body {
     font-size: 1.1em;
     margin: 0;
     font-weight: 700;
+    display: inline;
+}
+
+.snow-accumulation {
+    margin-left: 12px;
+}
+
+.snow-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #a8d5e5 0%, #7ec8e3 100%);
+    color: #1a5276;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: snowPulse 2s ease-in-out infinite;
+}
+
+@keyframes snowPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
 }
 
 .chart-loading {
