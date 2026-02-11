@@ -726,12 +726,80 @@ body {
 .chart-header {
     font-size: 1.2em;
     font-weight: 600;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     color: var(--primary);
     display: flex;
     align-items: center;
     gap: 8px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+}
+
+/* Chart line toggles */
+.chart-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.chart-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.chart-toggle:hover {
+    border-color: var(--text-muted);
+}
+
+.chart-toggle.active {
+    opacity: 1;
+    border-color: var(--primary);
+    background: rgba(14, 165, 233, 0.1);
+}
+
+.chart-toggle-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.chart-toggle-label {
+    font-size: 0.75em;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.chart-toggle.active .chart-toggle-label {
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .chart-toggles {
+        gap: 6px;
+    }
+
+    .chart-toggle {
+        padding: 4px 8px;
+    }
+
+    .chart-toggle-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .chart-toggle-label {
+        font-size: 0.7em;
+    }
 }
 
 .chart-container {

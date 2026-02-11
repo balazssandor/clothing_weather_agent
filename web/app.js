@@ -505,6 +505,7 @@ async function updateCardDate(cardId, newDate) {
             // Wait for canvas to be ready
             requestAnimationFrame(() => {
                 createWeatherChart(canvasId, hourlyData);
+                initChartToggles(canvasId);
             });
         } else {
             chartContainer.innerHTML = `<div class="chart-error">${translations[currentLanguage].chartNotAvailable}</div>`;
@@ -873,11 +874,13 @@ const windDirectionPlugin = {
     id: 'windDirectionArrows',
     afterDatasetsDraw: function(chart) {
         const ctx = chart.ctx;
-        const meta = chart.getDatasetMeta(2); // Wind Speed dataset (index 2)
+        const windDataset = chart.data.datasets[2]; // Wind Speed dataset (index 2)
+        const meta = chart.getDatasetMeta(2);
 
-        if (!meta || !chart.data.datasets[2].windDirections) return;
+        // Don't draw if wind dataset is hidden or missing
+        if (!meta || !windDataset || windDataset.hidden || !windDataset.windDirections) return;
 
-        const windDirections = chart.data.datasets[2].windDirections;
+        const windDirections = windDataset.windDirections;
         const windColor = 'rgb(14, 165, 233)';
 
         meta.data.forEach((point, index) => {
@@ -950,7 +953,9 @@ const snowflakePlugin = {
     afterDatasetsDraw(chart, args, options) {
         const { ctx } = chart;
         const precipDataset = chart.data.datasets.find(ds => ds.label && ds.label.includes('Precipitation'));
-        if (!precipDataset || !precipDataset.isSnowByHour) return;
+
+        // Don't draw if precipitation dataset is hidden or missing
+        if (!precipDataset || precipDataset.hidden || !precipDataset.isSnowByHour) return;
 
         const datasetIndex = chart.data.datasets.indexOf(precipDataset);
         const meta = chart.getDatasetMeta(datasetIndex);
@@ -977,6 +982,104 @@ const snowflakePlugin = {
     }
 };
 
+// Check if device is mobile
+function isMobile() {
+    return window.innerWidth <= 768;
+}
+
+// Chart dataset configuration
+const CHART_DATASETS = [
+    { key: 'temp', label: 'Temp', color: 'rgb(239, 68, 68)', fullLabel: 'Temperature (C)' },
+    { key: 'feel', label: 'Feels', color: 'rgb(251, 146, 60)', fullLabel: 'Feels Like (C)' },
+    { key: 'wind', label: 'Wind', color: 'rgb(14, 165, 233)', fullLabel: 'Wind Speed (km/h)' },
+    { key: 'gust', label: 'Gusts', color: 'rgba(14, 165, 233, 0.6)', fullLabel: 'Wind Gusts (km/h)' },
+    { key: 'precip', label: 'Precip', color: 'rgb(59, 130, 246)', fullLabel: 'Precipitation (mm)' }
+];
+
+// Generate chart toggle buttons HTML
+function createChartToggles(canvasId) {
+    const mobile = isMobile();
+    // On mobile, only "Feels Like" is on by default; on desktop all are on
+    const defaultOn = mobile ? ['feel'] : ['temp', 'feel', 'wind', 'gust', 'precip'];
+
+    return CHART_DATASETS.map(ds => {
+        const isChecked = defaultOn.includes(ds.key);
+        return `
+            <label class="chart-toggle ${isChecked ? 'active' : ''}" data-dataset="${ds.key}" data-canvas="${canvasId}">
+                <span class="chart-toggle-dot" style="background: ${ds.color}"></span>
+                <span class="chart-toggle-label">${ds.label}</span>
+            </label>
+        `;
+    }).join('');
+}
+
+// Toggle chart dataset visibility
+function toggleChartDataset(toggleEl) {
+    const canvasId = toggleEl.dataset.canvas;
+    const datasetKey = toggleEl.dataset.dataset;
+    const chart = chartInstances[canvasId];
+
+    if (!chart) return;
+
+    toggleEl.classList.toggle('active');
+    const isVisible = toggleEl.classList.contains('active');
+
+    // Map key to dataset index
+    const keyToIndex = { temp: 0, feel: 1, wind: 2, gust: 3, precip: 4 };
+    const index = keyToIndex[datasetKey];
+
+    if (index !== undefined && chart.data.datasets[index]) {
+        chart.data.datasets[index].hidden = !isVisible;
+        chart.update();
+    }
+}
+
+// Initialize chart toggles after chart is created
+function initChartToggles(canvasId) {
+    const container = document.querySelector(`[data-toggles-for="${canvasId}"]`);
+    if (!container) return;
+
+    const chart = chartInstances[canvasId];
+    if (!chart) return;
+
+    const keyToIndex = { temp: 0, feel: 1, wind: 2, gust: 3, precip: 4 };
+
+    // Check if already initialized (has event listeners)
+    if (!container.dataset.initialized) {
+        const mobile = isMobile();
+        const defaultOn = mobile ? ['feel'] : ['temp', 'feel', 'wind', 'gust', 'precip'];
+
+        // Set initial toggle states based on defaults
+        container.querySelectorAll('.chart-toggle').forEach(toggle => {
+            const key = toggle.dataset.dataset;
+            if (defaultOn.includes(key)) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+        });
+
+        // Add click handlers (only once)
+        container.querySelectorAll('.chart-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => toggleChartDataset(toggle));
+        });
+
+        container.dataset.initialized = 'true';
+    }
+
+    // Sync chart visibility with current toggle states
+    container.querySelectorAll('.chart-toggle').forEach(toggle => {
+        const key = toggle.dataset.dataset;
+        const index = keyToIndex[key];
+        const isActive = toggle.classList.contains('active');
+
+        if (index !== undefined && chart.data.datasets[index]) {
+            chart.data.datasets[index].hidden = !isActive;
+        }
+    });
+    chart.update();
+}
+
 // Create a weather chart
 function createWeatherChart(canvasId, hourlyData) {
     const canvas = document.getElementById(canvasId);
@@ -989,17 +1092,23 @@ function createWeatherChart(canvasId, hourlyData) {
 
     const ctx = canvas.getContext('2d');
 
-    // Extract data
-    const hours = hourlyData.map(d => `${String(d.hour).padStart(2, '0')}:00`);
-    const temperatures = hourlyData.map(d => d.temperature);
-    const temperaturesFeel = hourlyData.map(d => d.temperature_feel);
-    const precipitation = hourlyData.map(d => d.precipitation);
-    const windSpeed = hourlyData.map(d => d.wind_speed);
-    const windGust = hourlyData.map(d => d.wind_gusts || d.wind_speed);
-    const windDirections = hourlyData.map(d => d.wind_direction || 0);
+    // On mobile, filter to daytime hours (8am-6pm) for better usability
+    let filteredData = hourlyData;
+    if (isMobile()) {
+        filteredData = hourlyData.filter(d => d.hour >= 8 && d.hour <= 18);
+    }
 
-    // Calculate snow info for precipitation bars
-    const { isSnowByHour } = calculateSnowInfo(hourlyData);
+    // Extract data
+    const hours = filteredData.map(d => `${String(d.hour).padStart(2, '0')}:00`);
+    const temperatures = filteredData.map(d => d.temperature);
+    const temperaturesFeel = filteredData.map(d => d.temperature_feel);
+    const precipitation = filteredData.map(d => d.precipitation);
+    const windSpeed = filteredData.map(d => d.wind_speed);
+    const windGust = filteredData.map(d => d.wind_gusts || d.wind_speed);
+    const windDirections = filteredData.map(d => d.wind_direction || 0);
+
+    // Calculate snow info for precipitation bars (use filtered data for chart)
+    const { isSnowByHour } = calculateSnowInfo(filteredData);
 
     // Create background colors for precipitation bars (light blue for snow, blue for rain)
     const precipColors = isSnowByHour.map(isSnow =>
@@ -1279,6 +1388,9 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
             ${tempHeader}
             <div class="chart-section">
                 <div class="chart-header" data-i18n="weatherForecast">${translations[currentLanguage].weatherForecast}</div>
+                <div class="chart-toggles" data-toggles-for="${canvasId}">
+                    ${createChartToggles(canvasId)}
+                </div>
                 <div class="chart-container">
                     <canvas id="${canvasId}"></canvas>
                 </div>
@@ -1330,6 +1442,7 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 const hourlyData = await response.json();
                 console.log(`Loaded hourly data for ${location.name}, ${hourlyData.length} data points`);
                 createWeatherChart(canvasId, hourlyData);
+                initChartToggles(canvasId);
 
                 // Store hourly data in card for lazy advice generation
                 card.dataset.hourlyData = JSON.stringify(hourlyData);
