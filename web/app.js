@@ -148,6 +148,116 @@ function getDateOffset(dayOffset) {
 // Global variable to store selected date
 let selectedForecastDate = null;
 
+// Generate card-level date selector HTML
+function createCardDateSelector(currentDate, cardId) {
+    const dates = getDateRange();
+    let html = '<div class="card-date-selector">';
+
+    dates.forEach(dateInfo => {
+        const isActive = dateInfo.date === currentDate ? 'active' : '';
+        const isPast = dateInfo.isPast ? 'past' : '';
+        const isFuture = dateInfo.isFuture ? 'future' : '';
+        const shortDate = formatDate(dateInfo.date).slice(0, 5); // DD-MM
+
+        html += `
+            <button class="card-date-btn ${isActive} ${isPast} ${isFuture}"
+                    data-date="${dateInfo.date}"
+                    data-card-id="${cardId}"
+                    onclick="updateCardDate('${cardId}', '${dateInfo.date}')">
+                <span class="card-date-day">${dateInfo.label}</span>
+                <span class="card-date-num">${shortDate}</span>
+            </button>
+        `;
+    });
+
+    html += '</div>';
+    return html;
+}
+
+// Update a single card with new date data
+async function updateCardDate(cardId, newDate) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+
+    const location = JSON.parse(card.dataset.location);
+    const useLocalPath = true; // Always use local path for specific dates
+
+    // Update active state on date buttons
+    card.querySelectorAll('.card-date-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.date === newDate);
+    });
+
+    // Show loading state
+    const chartContainer = card.querySelector('.chart-container');
+    const originalChartHtml = chartContainer.innerHTML;
+    chartContainer.innerHTML = '<div class="chart-loading">Loading...</div>';
+
+    // Create filenames
+    const safeName = location.name.replace(/ /g, '_').replace(/,/g, '').replace(/\(/g, '').replace(/\)/g, '').toLowerCase();
+    const baseFilename = `${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${safeName}`;
+    const adviceFilename = `${baseFilename}_model_advice_${currentLanguage}.md`;
+    const hourlyDataFilename = `${baseFilename}_hourly_data_full_day.json`;
+    const windAnalysisFilename = `${baseFilename}_wind_analysis.json`;
+    const canvasId = `chart-${baseFilename}`;
+
+    try {
+        // Load advice
+        const adviceResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${adviceFilename}`);
+        let adviceSections = [];
+        if (adviceResponse.ok) {
+            const adviceMarkdown = await adviceResponse.text();
+            adviceSections = parseAdviceMarkdown(adviceMarkdown);
+        }
+
+        // Update advice sections
+        if (adviceSections.length > 0) {
+            // Remove temperature section if present
+            if (adviceSections[0].title.includes('Temperature')) {
+                const tempHeader = card.querySelector('.temp-header');
+                if (tempHeader) {
+                    tempHeader.innerHTML = `<h3>${adviceSections[0].title}</h3>`;
+                }
+                adviceSections = adviceSections.slice(1);
+            }
+
+            const adviceCardsHtml = adviceSections.map(section => renderSection(section)).join('');
+            const duplicatedCardsHtml = adviceCardsHtml + adviceCardsHtml;
+            const adviceSectionsEl = card.querySelector('.advice-sections');
+            if (adviceSectionsEl) {
+                adviceSectionsEl.innerHTML = duplicatedCardsHtml;
+            }
+        }
+
+        // Load wind analysis
+        const windResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${windAnalysisFilename}`);
+        if (windResponse.ok) {
+            const windData = await windResponse.json();
+            const windSection = card.querySelector('.wind-analysis-section');
+            if (windSection) {
+                windSection.outerHTML = createWindAnalysisHtml(windData);
+            }
+        }
+
+        // Load hourly data and recreate chart
+        const hourlyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${hourlyDataFilename}`);
+        if (hourlyResponse.ok) {
+            const hourlyData = await hourlyResponse.json();
+            chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+
+            // Wait for canvas to be ready
+            requestAnimationFrame(() => {
+                createWeatherChart(canvasId, hourlyData);
+            });
+        } else {
+            chartContainer.innerHTML = `<div class="chart-error">${translations[currentLanguage].chartNotAvailable}</div>`;
+        }
+
+    } catch (error) {
+        console.error(`Error updating card ${cardId}:`, error);
+        chartContainer.innerHTML = originalChartHtml;
+    }
+}
+
 // Generate array of dates from past 6 days to future 3 days
 function getDateRange() {
     const dates = [];
@@ -790,6 +900,13 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
     const card = document.createElement('div');
     card.className = 'location-card';
 
+    // Create unique card ID and store location data for date switching
+    const safeName = location.name.replace(/ /g, '_').replace(/,/g, '').replace(/\(/g, '').replace(/\)/g, '').toLowerCase();
+    const cardId = `card-${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${safeName}`;
+    card.id = cardId;
+    card.dataset.location = JSON.stringify(location);
+    card.dataset.currentDate = forecastDate;
+
     // Track location card view with Intersection Observer
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -807,8 +924,7 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
 
     setTimeout(() => observer.observe(card), 100);
 
-    // Create unique filename using mountain range and location name
-    const safeName = location.name.replace(/ /g, '_').replace(/,/g, '').replace(/\(/g, '').replace(/\)/g, '').toLowerCase();
+    // Create unique filename using mountain range and location name (safeName already defined above)
     const baseFilename = `${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${safeName}`;
     const adviceFilename = `${baseFilename}_model_advice_${currentLanguage}.md`;
     const hourlyDataFilename = `${baseFilename}_hourly_data_full_day.json`;
@@ -914,6 +1030,9 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
     const duplicatedCardsHtml = adviceCardsHtml + adviceCardsHtml; // Duplicate for seamless loop
     console.log(`Generated HTML length for ${location.name}: ${adviceCardsHtml.length} chars`);
 
+    // Generate card-level date selector
+    const cardDateSelectorHtml = createCardDateSelector(forecastDate, cardId);
+
     card.innerHTML = `
         <div class="card-header">
             <h3>${location.name}</h3>
@@ -922,6 +1041,7 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 <div class="meta-item"><strong>${location.elevation}m</strong></div>
                 <div class="meta-item">${location.latitude.toFixed(3)}N, ${location.longitude.toFixed(3)}E</div>
             </div>
+            ${cardDateSelectorHtml}
         </div>
         <div class="card-body">
             ${tempHeader}
