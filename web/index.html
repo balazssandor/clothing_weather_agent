@@ -50,8 +50,13 @@
 <!--                <button class="lang-btn" data-lang="ro" onclick="switchLanguage('ro')">RO</button>-->
 <!--                <button class="lang-btn" data-lang="hu" onclick="switchLanguage('hu')">HU</button>-->
             </div>
-            <h1 data-i18n="title">Romanian Mountain Weather</h1>
-            <div class="subtitle" id="subtitle" data-i18n="loading">Loading forecast data...</div>
+            <div class="header-content">
+                <img src="images/logo1.png" alt="Mountain Weather Logo" class="header-logo">
+                <div class="header-text">
+                    <h1 data-i18n="title">Romanian Mountain Weather</h1>
+                    <div class="subtitle" id="subtitle" data-i18n="loading">Loading forecast data...</div>
+                </div>
+            </div>
         </div>
 
         <!-- Sticky Navigation Bar -->
@@ -95,7 +100,6 @@
         <!-- Locations Container -->
         <div id="locations-container" class="loading" data-i18n="loadingForecasts">Loading mountain forecasts</div>
     </div>
-
     <script src="app.js" defer></script>
 </body>
 </html>

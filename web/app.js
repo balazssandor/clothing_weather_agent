@@ -951,8 +951,18 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
         enableDragScroll(adviceSectionsEl);
     }
 
-    // Load hourly data and create chart
-    setTimeout(async () => {
+    // Load hourly data and create chart (wait for canvas to be in DOM)
+    const loadChartWhenReady = async (retries = 10) => {
+        const canvas = document.getElementById(canvasId);
+
+        // Wait for canvas to be in the DOM
+        if (!canvas || !canvas.isConnected) {
+            if (retries > 0) {
+                requestAnimationFrame(() => loadChartWhenReady(retries - 1));
+            }
+            return;
+        }
+
         try {
             let response;
 
@@ -986,8 +996,10 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
             }
         } catch (error) {
             console.warn(`Could not load chart for ${location.name}:`, error);
-            const container = document.querySelector(`#${canvasId}`).parentElement;
-            container.innerHTML = `<div class="chart-error">${translations[currentLanguage].chartNotAvailable}</div>`;
+            const container = document.querySelector(`#${canvasId}`)?.parentElement;
+            if (container) {
+                container.innerHTML = `<div class="chart-error">${translations[currentLanguage].chartNotAvailable}</div>`;
+            }
 
             // Track chart load failure
             trackEvent('chart_load_failed', {
@@ -996,7 +1008,9 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 error: error.message
             });
         }
-    }, 100);
+    };
+
+    requestAnimationFrame(() => loadChartWhenReady());
 
     return card;
 }
