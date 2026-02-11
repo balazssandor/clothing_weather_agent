@@ -575,17 +575,51 @@ function setupStickyDateSelector() {
         if (window.scrollY > stickyThreshold) {
             if (!stickyNav.classList.contains('sticky')) {
                 stickyNav.classList.add('sticky');
-                spacer.style.height = navHeight + 'px';
+                // Don't set spacer height if collapsed
+                if (!stickyNav.classList.contains('collapsed')) {
+                    spacer.style.height = navHeight + 'px';
+                }
             }
         } else {
             if (stickyNav.classList.contains('sticky')) {
                 stickyNav.classList.remove('sticky');
+                stickyNav.classList.remove('collapsed'); // Reset collapsed state when not sticky
                 spacer.style.height = '0';
+                // Reset toggle button text
+                const toggleText = document.querySelector('.sticky-nav-toggle .toggle-text');
+                if (toggleText) toggleText.textContent = 'Hide';
             }
         }
     });
 
     window.addEventListener('resize', updateStickyThreshold);
+}
+
+// Toggle sticky nav collapsed/expanded state
+function toggleStickyNav() {
+    const stickyNav = document.getElementById('sticky-nav');
+    const toggleBtn = document.getElementById('sticky-nav-toggle');
+
+    if (!stickyNav || !toggleBtn) return;
+
+    const isCollapsed = stickyNav.classList.toggle('collapsed');
+
+    // Update button text and icon
+    const toggleText = toggleBtn.querySelector('.toggle-text');
+    const toggleIcon = toggleBtn.querySelector('.toggle-icon');
+
+    if (toggleText) {
+        toggleText.textContent = isCollapsed ? 'Show' : 'Hide';
+    }
+
+    // Update spacer height when collapsed
+    const spacer = document.querySelector('.sticky-nav-spacer');
+    if (spacer && stickyNav.classList.contains('sticky')) {
+        spacer.style.height = isCollapsed ? '0' : stickyNav.querySelector('.sticky-nav-content').offsetHeight + 'px';
+    }
+
+    // Track event
+    trackEvent('sticky_nav_toggle', { action: isCollapsed ? 'collapse' : 'expand' });
 }
 
 // Select a date and reload data
@@ -987,12 +1021,11 @@ function isMobile() {
     return window.innerWidth <= 768;
 }
 
-// Chart dataset configuration
+// Chart dataset configuration (wind toggle controls both wind speed and gusts)
 const CHART_DATASETS = [
     { key: 'temp', label: 'Temp', color: 'rgb(239, 68, 68)', fullLabel: 'Temperature (C)' },
     { key: 'feel', label: 'Feels', color: 'rgb(251, 146, 60)', fullLabel: 'Feels Like (C)' },
-    { key: 'wind', label: 'Wind', color: 'rgb(14, 165, 233)', fullLabel: 'Wind Speed (km/h)' },
-    { key: 'gust', label: 'Gusts', color: 'rgba(14, 165, 233, 0.6)', fullLabel: 'Wind Gusts (km/h)' },
+    { key: 'wind', label: 'Wind', color: 'rgb(14, 165, 233)', fullLabel: 'Wind Speed & Gusts (km/h)' },
     { key: 'precip', label: 'Precip', color: 'rgb(59, 130, 246)', fullLabel: 'Precipitation (mm)' }
 ];
 
@@ -1000,7 +1033,7 @@ const CHART_DATASETS = [
 function createChartToggles(canvasId) {
     const mobile = isMobile();
     // On mobile, only "Feels Like" is on by default; on desktop all are on
-    const defaultOn = mobile ? ['feel'] : ['temp', 'feel', 'wind', 'gust', 'precip'];
+    const defaultOn = mobile ? ['feel'] : ['temp', 'feel', 'wind', 'precip'];
 
     return CHART_DATASETS.map(ds => {
         const isChecked = defaultOn.includes(ds.key);
@@ -1024,14 +1057,16 @@ function toggleChartDataset(toggleEl) {
     toggleEl.classList.toggle('active');
     const isVisible = toggleEl.classList.contains('active');
 
-    // Map key to dataset index
-    const keyToIndex = { temp: 0, feel: 1, wind: 2, gust: 3, precip: 4 };
-    const index = keyToIndex[datasetKey];
+    // Map key to dataset indices (wind controls both wind speed and gusts)
+    const keyToIndices = { temp: [0], feel: [1], wind: [2, 3], precip: [4] };
+    const indices = keyToIndices[datasetKey] || [];
 
-    if (index !== undefined && chart.data.datasets[index]) {
-        chart.data.datasets[index].hidden = !isVisible;
-        chart.update();
-    }
+    indices.forEach(index => {
+        if (chart.data.datasets[index]) {
+            chart.data.datasets[index].hidden = !isVisible;
+        }
+    });
+    chart.update();
 }
 
 // Initialize chart toggles after chart is created
@@ -1042,12 +1077,13 @@ function initChartToggles(canvasId) {
     const chart = chartInstances[canvasId];
     if (!chart) return;
 
-    const keyToIndex = { temp: 0, feel: 1, wind: 2, gust: 3, precip: 4 };
+    // Map key to dataset indices (wind controls both wind speed and gusts)
+    const keyToIndices = { temp: [0], feel: [1], wind: [2, 3], precip: [4] };
 
     // Check if already initialized (has event listeners)
     if (!container.dataset.initialized) {
         const mobile = isMobile();
-        const defaultOn = mobile ? ['feel'] : ['temp', 'feel', 'wind', 'gust', 'precip'];
+        const defaultOn = mobile ? ['feel'] : ['temp', 'feel', 'wind', 'precip'];
 
         // Set initial toggle states based on defaults
         container.querySelectorAll('.chart-toggle').forEach(toggle => {
@@ -1070,12 +1106,14 @@ function initChartToggles(canvasId) {
     // Sync chart visibility with current toggle states
     container.querySelectorAll('.chart-toggle').forEach(toggle => {
         const key = toggle.dataset.dataset;
-        const index = keyToIndex[key];
+        const indices = keyToIndices[key] || [];
         const isActive = toggle.classList.contains('active');
 
-        if (index !== undefined && chart.data.datasets[index]) {
-            chart.data.datasets[index].hidden = !isActive;
-        }
+        indices.forEach(index => {
+            if (chart.data.datasets[index]) {
+                chart.data.datasets[index].hidden = !isActive;
+            }
+        });
     });
     chart.update();
 }
