@@ -1,14 +1,174 @@
 import argparse
 import json
 import os
+from collections import defaultdict
 from datetime import date, timedelta
-from typing import List
-from main import query_model
+from typing import List, Dict, Any, Optional
 from weather import (_get_tomorrow_weather_report_internal, HourlyForecastPoint, TomorrowWindowSummary,
-                     wind_chill_with_gusts, get_historical_wind_analysis, HistoricalWindAnalysis)
-from rich.console import Console
-from rich.markdown import Markdown
-from s3_uploader import upload_directory_to_s3, configure_bucket_cors, configure_bucket_policy
+                     wind_chill_with_gusts)
+
+
+from s3_uploader import upload_directory_to_s3
+
+
+def degrees_to_cardinal(degrees: float) -> str:
+    """Convert wind direction degrees to cardinal direction."""
+    directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    index = round(degrees / 45) % 8
+    return directions[index]
+
+
+def _analyze_wind_from_saved_data(
+    base_filename: str,
+    forecast_date: date,
+    days_back: int = 7,
+    include_forecast_days: bool = True
+) -> Optional[Dict[str, Any]]:
+    """
+    Analyze historical wind data from previously saved hourly JSON files.
+
+    Args:
+        base_filename: The base filename pattern for this location
+        forecast_date: The date we're forecasting for
+        days_back: How many days of past data to look for
+        include_forecast_days: Whether to include forecast data for days before forecast_date
+
+    Returns:
+        Dictionary with wind analysis data or None if no data found
+    """
+    base_dir = "tomorrow_mountain_forecast_data"
+
+    # Collect all hourly data from saved files
+    all_wind_data = []
+    dates_with_data = []
+
+    # Look for past days' saved data
+    for day_offset in range(1, days_back + 1):
+        check_date = forecast_date - timedelta(days=day_offset)
+        date_dir = os.path.join(base_dir, f"date={check_date.isoformat()}")
+        hourly_file = os.path.join(date_dir, f"{base_filename}_hourly_data_full_day.json")
+
+        if os.path.exists(hourly_file):
+            try:
+                with open(hourly_file, 'r') as f:
+                    hourly_data = json.load(f)
+                    for hour_data in hourly_data:
+                        if hour_data.get('wind_speed') is not None and hour_data.get('wind_direction') is not None:
+                            all_wind_data.append({
+                                'date': check_date.isoformat(),
+                                'hour': hour_data.get('hour'),
+                                'wind_speed': hour_data['wind_speed'],
+                                'wind_gusts': hour_data.get('wind_gusts', 0),
+                                'wind_direction': hour_data['wind_direction']
+                            })
+                    dates_with_data.append(check_date)
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"  ⚠️ Could not read {hourly_file}: {e}")
+
+    # Also include forecast data for upcoming days if requested
+    if include_forecast_days:
+        # For forecast_date day+2 or day+3, include tomorrow's forecast wind
+        for day_offset in range(0, 2):  # Check today's date and tomorrow
+            check_date = forecast_date - timedelta(days=day_offset)
+            if check_date > date.today():  # Only future dates
+                continue
+            date_dir = os.path.join(base_dir, f"date={check_date.isoformat()}")
+            hourly_file = os.path.join(date_dir, f"{base_filename}_hourly_data_full_day.json")
+
+            if os.path.exists(hourly_file) and check_date not in dates_with_data:
+                try:
+                    with open(hourly_file, 'r') as f:
+                        hourly_data = json.load(f)
+                        for hour_data in hourly_data:
+                            if hour_data.get('wind_speed') is not None and hour_data.get('wind_direction') is not None:
+                                all_wind_data.append({
+                                    'date': check_date.isoformat(),
+                                    'hour': hour_data.get('hour'),
+                                    'wind_speed': hour_data['wind_speed'],
+                                    'wind_gusts': hour_data.get('wind_gusts', 0),
+                                    'wind_direction': hour_data['wind_direction'],
+                                    'is_forecast': True
+                                })
+                        dates_with_data.append(check_date)
+                except (json.JSONDecodeError, KeyError):
+                    pass
+
+    if not all_wind_data:
+        return None
+
+    # Analyze wind by direction
+    direction_data = defaultdict(lambda: {"speeds": [], "gusts": [], "count": 0})
+    total_hours = 0
+    total_speed = 0.0
+    max_gust_overall = 0.0
+
+    for data_point in all_wind_data:
+        cardinal_dir = degrees_to_cardinal(data_point['wind_direction'])
+        direction_data[cardinal_dir]["count"] += 1
+        direction_data[cardinal_dir]["speeds"].append(data_point['wind_speed'])
+
+        gust = data_point.get('wind_gusts', 0)
+        if gust:
+            direction_data[cardinal_dir]["gusts"].append(gust)
+            max_gust_overall = max(max_gust_overall, gust)
+
+        total_hours += 1
+        total_speed += data_point['wind_speed']
+
+    # Calculate statistics for each direction
+    direction_stats = []
+    for direction in ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']:
+        data_for_dir = direction_data[direction]
+        count = data_for_dir["count"]
+
+        if count == 0:
+            direction_stats.append({
+                "direction": direction,
+                "percentage": 0.0,
+                "avg_speed": 0.0,
+                "max_gust": 0.0,
+                "hours_count": 0
+            })
+        else:
+            avg_speed = sum(data_for_dir["speeds"]) / count
+            max_gust = max(data_for_dir["gusts"]) if data_for_dir["gusts"] else 0.0
+            percentage = (count / total_hours) * 100
+            direction_stats.append({
+                "direction": direction,
+                "percentage": round(percentage, 1),
+                "avg_speed": round(avg_speed, 1),
+                "max_gust": round(max_gust, 1),
+                "hours_count": count
+            })
+
+    # Sort by percentage (most common first)
+    direction_stats.sort(key=lambda x: x['percentage'], reverse=True)
+
+    # Determine dominant direction
+    dominant_direction = direction_stats[0]['direction'] if direction_stats else "N/A"
+    avg_wind_speed = total_speed / total_hours if total_hours > 0 else 0.0
+
+    # Calculate actual data coverage
+    dates_with_data.sort()
+    days_with_data = round(total_hours / 24, 1)
+    start_date = min(dates_with_data).isoformat() if dates_with_data else ""
+    end_date = max(dates_with_data).isoformat() if dates_with_data else ""
+    date_range_str = f"{start_date} to {end_date}" if start_date and end_date else "No data"
+
+    return {
+        "date_analyzed": date_range_str,
+        "total_hours": total_hours,
+        "days_requested": days_back,
+        "days_with_data": days_with_data,
+        "days_found": len(dates_with_data),
+        "start_date": start_date,
+        "end_date": end_date,
+        "dominant_direction": dominant_direction,
+        "avg_wind_speed": round(avg_wind_speed, 1),
+        "max_gust": round(max_gust_overall, 1),
+        "direction_stats": direction_stats,
+        "source": "saved_forecast_data"
+    }
 
 
 def _enrich_hourly_point(point: HourlyForecastPoint) -> dict:
@@ -28,12 +188,21 @@ def _format_wind_analysis(wind_data: dict) -> str:
     if not wind_data:
         return "⚠️ Historical wind data unavailable"
 
+    days_requested = wind_data.get('days_requested', 7)
+    days_with_data = wind_data.get('days_with_data', wind_data['total_hours'] / 24)
+    days_found = wind_data.get('days_found', 0)
+    source = wind_data.get('source', 'api')
+
     lines = []
-    lines.append(f"📊 7-DAY WIND ANALYSIS - AVALANCHE RISK ASSESSMENT")
+    lines.append(f"📊 WIND ANALYSIS - AVALANCHE RISK ASSESSMENT")
     lines.append(f"   Period: {wind_data['date_analyzed']}")
+    if source == 'saved_forecast_data':
+        lines.append(f"   Data: {days_found} days found ({wind_data['total_hours']}h), looked back {days_requested} days")
+    else:
+        lines.append(f"   Data coverage: {days_with_data:.1f} days of data (requested {days_requested} days)")
     lines.append(f"   (Recent wind patterns for avalanche risk & snow transport)")
     lines.append("")
-    lines.append(f"Analyzed: {wind_data['total_hours']} hours over 7 days")
+    lines.append(f"Analyzed: {wind_data['total_hours']} hours ({days_with_data:.1f} days of data)")
     lines.append(f"Dominant Direction: {wind_data['dominant_direction']}")
     lines.append(f"Average Wind Speed: {wind_data['avg_wind_speed']:.1f} km/h")
     lines.append(f"Maximum Gust: {wind_data['max_gust']:.1f} km/h")
@@ -63,153 +232,6 @@ def _format_wind_analysis(wind_data: dict) -> str:
             lee_directions.append(direction_map.get(stat['direction'], '?'))
 
         lines.append(f"- Higher avalanche risk on slopes facing: {', '.join(lee_directions)}")
-
-    return '\n'.join(lines)
-
-
-def _determine_temp_range(temp_feel_min: float, temp_feel_max: float) -> str:
-    """Determine temperature range key based on min/max feels-like temperature."""
-    # Use the most conservative (coldest) value for safety
-    temp = min(temp_feel_min, temp_feel_max)
-
-    if temp < -20:
-        return "below_-20"
-    elif temp < -10:
-        return "-20_to_-10"
-    elif temp < 0:
-        return "-10_to_0"
-    elif temp < 10:
-        return "0_to_10"
-    else:
-        return "above_10"
-
-
-def _generate_clothing_advice_from_json(points: List[HourlyForecastPoint], location: dict, is_snowy: bool, language: str = 'en') -> str:
-    """Generate clothing advice from clothing_per_temp_feel_{language}.json based on actual conditions.
-
-    Args:
-        points: List of hourly forecast data points
-        location: Location dictionary
-        is_snowy: Whether precipitation is snow
-        language: Language code ('en', 'ro', 'hu')
-    """
-
-    # Load clothing reference data for the specified language
-    if language in ['ro', 'hu']:
-        json_filename = f'clothing_per_temp_feel_{language}.json'
-    else:
-        json_filename = 'clothing_per_temp_feel.json'  # Default to English
-
-    with open(json_filename, 'r', encoding='utf-8') as f:
-        clothing_data = json.load(f)
-
-    # Enrich points and get temperature_feel values
-    enriched = [_enrich_hourly_point(p) for p in points]
-    temp_feels = [p['temperature_feel'] for p in enriched]
-    temp_feel_min = min(temp_feels)
-    temp_feel_max = max(temp_feels)
-    temp_feel_avg = sum(temp_feels) / len(temp_feels)
-
-    # Check for precipitation
-    total_precip = sum(p.precipitation for p in points)
-    has_heavy_snow = is_snowy and total_precip > 5
-    has_wet_precip = total_precip > 3 and not is_snowy
-
-    # Determine temperature range
-    temp_range_key = _determine_temp_range(temp_feel_min, temp_feel_max)
-
-    # Find the matching temperature interval
-    temp_interval = None
-    for interval in clothing_data['clothing']['temperature_feel_intervals_celsius']:
-        if interval['range'] == temp_range_key:
-            temp_interval = interval
-            break
-
-    if not temp_interval:
-        return "Unable to determine clothing recommendations."
-
-    # Build markdown output
-    lines = []
-
-    # Temperature context
-    lines.append(f"**Temperature (feels like): {temp_feel_min:.1f}°C to {temp_feel_max:.1f}°C** (avg: {temp_feel_avg:.1f}°C)")
-    lines.append("")
-
-    # Base layers
-    lines.append("**Base Layers:**")
-    lines.append(f"- Torso: {temp_interval['base_layer']['torso']}")
-    lines.append(f"- Legs: {temp_interval['base_layer']['legs']}")
-    lines.append("")
-
-    # Mid layers
-    lines.append("**Mid Layers:**")
-    lines.append(f"- Active: {temp_interval['mid_layers']['active']}")
-    lines.append(f"- Static/Stops: {temp_interval['mid_layers']['static_extra']}")
-    lines.append("")
-
-    # Outer layers
-    lines.append("**Outer Layers:**")
-    lines.append(f"- Jacket: {temp_interval['outer_layers']['required_windstopper']}")
-    lines.append(f"- Legs: {temp_interval['outer_layers']['legs']}")
-    lines.append("")
-
-    # Accessories
-    lines.append("**Accessories:**")
-    lines.append(f"- Hands: {temp_interval['accessories']['hands']}")
-    lines.append(f"- Head/Face: {temp_interval['accessories']['head_face']}")
-    if 'notes' in temp_interval['accessories']:
-        lines.append(f"- Notes: {temp_interval['accessories']['notes']}")
-    lines.append("")
-
-    # Always carried items
-    lines.append("**Always Carried (Core):**")
-    for category, items in clothing_data['clothing']['always_carried_core_items'].items():
-        category_name = category.replace('_', ' ').title()
-        lines.append(f"- {category_name}: {', '.join(items)}")
-    lines.append("")
-
-    # Precipitation overrides
-    if has_heavy_snow:
-        lines.append("**⚠️ Heavy Snow Conditions:**")
-        precip_info = clothing_data['clothing']['precipitation_overrides']['heavy_snow']
-        for item in precip_info['required_additions']:
-            lines.append(f"- {item}")
-        lines.append(f"- {precip_info['notes']}")
-        lines.append("")
-    elif has_wet_precip:
-        lines.append("**⚠️ Wet Precipitation (Rain/Wet Snow):**")
-        precip_info = clothing_data['clothing']['precipitation_overrides']['wet_snow_or_rain']
-        for item in precip_info['required_additions']:
-            lines.append(f"- {item}")
-        lines.append(f"- {precip_info['notes']}")
-        lines.append("")
-
-    # Equipment section
-    lines.append("**Essential Equipment:**")
-    lines.append("")
-    lines.append("*Mandatory Safety (Avalanche):*")
-    for item in clothing_data['equipment']['mandatory_safety_kit_3_4']:
-        lines.append(f"- {item}")
-    lines.append("")
-
-    lines.append("*Ski Touring System:*")
-    for item in clothing_data['equipment']['ski_touring_system']:
-        lines.append(f"- {item}")
-    lines.append("")
-
-    lines.append("*Navigation & Communication:*")
-    for item in clothing_data['equipment']['navigation_communication']:
-        lines.append(f"- {item}")
-    lines.append("")
-
-    lines.append("*Emergency & Repair:*")
-    for item in clothing_data['equipment']['emergency_repair']:
-        lines.append(f"- {item}")
-    lines.append("")
-
-    lines.append("*Food & Hydration:*")
-    for item in clothing_data['equipment']['food_hydration']:
-        lines.append(f"- {item}")
 
     return '\n'.join(lines)
 
@@ -277,25 +299,18 @@ def _generate_report_text(points: List[HourlyForecastPoint], summary: TomorrowWi
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate ski touring clothing advice for mountain locations')
+    parser = argparse.ArgumentParser(description='Generate weather forecasts for mountain locations')
     parser.add_argument('--use-cache', action='store_true', default=False,
                         help='Use cached data if available (default: always fetch fresh)')
     args = parser.parse_args()
 
     use_cache = args.use_cache
-    console = Console()
-    print("Generating ski touring clothing advice for mountain locations...")
+    print("Generating weather forecasts for mountain locations...")
     if not use_cache:
         print("🔄 Cache disabled - fetching fresh data for all locations")
 
     with open('mountain_locations.json', 'r') as f:
         mountain_locations = json.load(f)
-
-    # Load equipment reference list
-    with open('ski_touring_equipment.json', 'r') as f:
-        equipment_data = json.load(f)
-
-    snow_weather_codes = {71, 73, 75, 77, 85, 86}
 
     # Generate forecasts for 3 days (tomorrow, +2, +3)
     forecast_days = []
@@ -337,7 +352,6 @@ def main():
                     if 'dominant_wind_direction' not in summary_24h_dict:
                         print(f"⚠️  Cached data for {loc['name']} is outdated (missing dominant_wind_direction). Re-fetching from API...")
                     else:
-                        report_24h = cached_data['weather_report_text']
                         # Reconstruct dataclass from dict
                         summary_24h = TomorrowWindowSummary(**summary_24h_dict)
                         # Reconstruct hourly points (remove temperature_feel if present, it will be recalculated)
@@ -374,7 +388,7 @@ def main():
                     json.dump(cache_data, f, indent=2)
                 print(f"Weather data cached to {weather_cache_path}")
 
-            # Fetch historical wind analysis for avalanche risk assessment
+            # Analyze historical wind from saved forecast data
             wind_analysis_cache_path = os.path.join(output_dir, f"{base_filename}_wind_analysis.json")
             wind_analysis_dict = None
             if use_cache and os.path.exists(wind_analysis_cache_path):
@@ -383,41 +397,20 @@ def main():
                     wind_analysis_dict = json.load(f)
 
             if wind_analysis_dict is None:
-                print(f"📊 Analyzing historical wind patterns for {loc['name']}...")
-                try:
-                    wind_analysis = get_historical_wind_analysis(
-                        loc['latitude'],
-                        loc['longitude'],
-                        forecast_date
-                    )
-                    # Convert to dict for JSON serialization
-                    wind_analysis_dict = {
-                        "date_analyzed": wind_analysis.date_analyzed,
-                        "total_hours": wind_analysis.total_hours,
-                        "dominant_direction": wind_analysis.dominant_direction,
-                        "avg_wind_speed": round(wind_analysis.avg_wind_speed, 1),
-                        "max_gust": round(wind_analysis.max_gust, 1),
-                        "direction_stats": [
-                            {
-                                "direction": stat.direction,
-                                "percentage": round(stat.percentage, 1),
-                                "avg_speed": round(stat.avg_speed, 1),
-                                "max_gust": round(stat.max_gust, 1),
-                                "hours_count": stat.hours_count
-                            }
-                            for stat in wind_analysis.direction_stats
-                        ]
-                    }
+                print(f"📊 Analyzing wind patterns from saved data for {loc['name']}...")
+                wind_analysis_dict = _analyze_wind_from_saved_data(
+                    base_filename,
+                    forecast_date,
+                    days_back=7,
+                    include_forecast_days=True
+                )
+                if wind_analysis_dict:
                     # Save wind analysis
                     with open(wind_analysis_cache_path, 'w') as f:
                         json.dump(wind_analysis_dict, f, indent=2)
-                    print(f"✓ Wind analysis saved to {wind_analysis_cache_path}")
-                except Exception as e:
-                    print(f"⚠️  Error fetching wind analysis: {e}")
-                    wind_analysis_dict = None
-
-            # Use full 24h data for clothing advice (no filtering)
-            is_snowy = any(p.weather_code in snow_weather_codes for p in points_24h)
+                    print(f"✓ Wind analysis saved ({wind_analysis_dict['days_found']} days of data found)")
+                else:
+                    print(f"⚠️  No saved wind data found for {loc['name']}")
 
             # Generate a weather report summary for full 24h
             report_full_day = _generate_report_text(points_24h, summary_24h, loc)
@@ -427,75 +420,11 @@ def main():
                 wind_analysis_text = _format_wind_analysis(wind_analysis_dict)
                 report_full_day = report_full_day + "\n\n" + "="*80 + "\n" + wind_analysis_text
 
-            # Generate clothing advice for all languages
-            languages = ['en', 'ro', 'hu']
-            for lang in languages:
-                model_advice_path = os.path.join(output_dir, f"{base_filename}_model_advice_{lang}.md")
-
-                if use_cache and os.path.exists(model_advice_path):
-                    print(f"✓ Using cached clothing advice for {loc['name']} ({lang.upper()})")
-                    continue
-
-                print(f"📋 Generating clothing advice from JSON for {loc['name']} ({lang.upper()})...")
-
-                # Generate advice from structured JSON data (full 24h)
-                try:
-                    clothing_advice = _generate_clothing_advice_from_json(points_24h, loc, is_snowy, language=lang)
-
-                    # Save the advice
-                    with open(model_advice_path, 'w', encoding='utf-8') as f:
-                        f.write(clothing_advice)
-                    print(f"✓ Saved {lang.upper()} advice to {model_advice_path}")
-
-                except Exception as e:
-                    print(f"⚠️  Error generating {lang.upper()} advice from JSON: {e}")
-                    if lang == 'en':
-                        # Only fall back to LLM for English
-                        print(f"   Falling back to LLM for English...")
-
-                        try:
-                            # Fallback to LLM if JSON generation fails (English only)
-                            equipment_text = "AVAILABLE EQUIPMENT LIST (use ONLY items from this list):\n\n"
-                            for zone in equipment_data:
-                                equipment_text += f"{zone['body_zone']}:\n"
-                                for item in zone['must_haves']:
-                                    equipment_text += f"  - {item}\n"
-                                equipment_text += "\n"
-
-                            weather_system_prompt = (
-                                "You are an expert ski touring guide. Your task is to recommend clothing and equipment from a predefined list based on weather conditions. "
-                                "You MUST ONLY recommend items that exist in the provided equipment list. Do not suggest any items not in the list."
-                            )
-
-                            weather_prompt = (
-                                f"{equipment_text}"
-                                f"Based on this forecast for {loc['name']} ({loc['elevation']}m), recommend clothing/equipment for ski touring (full day). "
-                                f"{'Snowy conditions expected.' if is_snowy else 'No snow expected.'} Select ONLY from the equipment list above. "
-                                f"Provide as a bullet list, ordered head to toe. "
-                                f"Response format: bullet list only, no title, no explanations.\n\n"
-                                f"Weather Report:\n{report_full_day}"
-                            )
-
-                            clothing_advice = query_model(weather_system_prompt, weather_prompt).lower()
-
-                            # Save LLM fallback advice
-                            with open(model_advice_path, 'w', encoding='utf-8') as f:
-                                f.write(clothing_advice)
-                            print(f"✓ Saved LLM fallback advice to {model_advice_path}")
-                        except Exception as llm_err:
-                            print(f"   ❌ LLM fallback also failed: {llm_err}")
-
             # Save weather report text (full 24h)
             weather_report_path = os.path.join(output_dir, f"{base_filename}_weather_report_full_day.txt")
             with open(weather_report_path, 'w') as f:
                 f.write(report_full_day)
             print(f"Weather report (full day) saved to {weather_report_path}")
-
-            # Save clothing advice as markdown (if it was newly generated)
-            if not use_cache or not os.path.exists(model_advice_path):
-                with open(model_advice_path, 'w') as f:
-                    f.write(clothing_advice)
-                print(f"Clothing advice saved to {model_advice_path}")
 
             # Save hourly data for full 24h with temperature_feel enrichment
             hourly_data_path = os.path.join(output_dir, f"{base_filename}_hourly_data_full_day.json")

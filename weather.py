@@ -66,12 +66,16 @@ class WindDirectionStats:
 @dataclass
 class HistoricalWindAnalysis:
     """Analysis of historical wind patterns for avalanche risk assessment."""
-    date_analyzed: str  # Date of the historical data (YYYY-MM-DD)
-    total_hours: int  # Total hours analyzed
+    date_analyzed: str  # Date range string (e.g., "2026-02-05 to 2026-02-11")
+    total_hours: int  # Total hours with valid data
     direction_stats: List[WindDirectionStats]  # Stats for each direction, sorted by percentage
     dominant_direction: str  # Most common wind direction
     avg_wind_speed: float  # Overall average wind speed
     max_gust: float  # Maximum gust observed
+    days_requested: int  # Number of days requested for analysis
+    days_with_data: float  # Actual days of data received (total_hours / 24)
+    start_date: str  # Start date of analysis period (YYYY-MM-DD)
+    end_date: str  # End date of analysis period (YYYY-MM-DD)
 
 
 @dataclass(frozen=True)
@@ -481,13 +485,20 @@ def get_historical_wind_analysis(
     dominant_direction = direction_stats[0].direction if direction_stats else "N/A"
     avg_wind_speed = total_speed / total_hours if total_hours > 0 else 0.0
 
+    # Calculate actual days with data
+    days_with_data = round(total_hours / 24, 1)
+
     return HistoricalWindAnalysis(
         date_analyzed=date_range_str,
         total_hours=total_hours,
         direction_stats=direction_stats,
         dominant_direction=dominant_direction,
         avg_wind_speed=avg_wind_speed,
-        max_gust=max_gust_overall
+        max_gust=max_gust_overall,
+        days_requested=days_back,
+        days_with_data=days_with_data,
+        start_date=start_date_str,
+        end_date=end_date_str
     )
 
 
