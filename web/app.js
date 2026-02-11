@@ -807,7 +807,9 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
 
     setTimeout(() => observer.observe(card), 100);
 
-    const baseFilename = `${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${location.zone.replace(/ /g, '_')}`;
+    // Create unique filename using mountain range and location name
+    const safeName = location.name.replace(/ /g, '_').replace(/,/g, '').replace(/\(/g, '').replace(/\)/g, '').toLowerCase();
+    const baseFilename = `${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${safeName}`;
     const adviceFilename = `${baseFilename}_model_advice_${currentLanguage}.md`;
     const hourlyDataFilename = `${baseFilename}_hourly_data_full_day.json`;
     const windAnalysisFilename = `${baseFilename}_wind_analysis.json`;

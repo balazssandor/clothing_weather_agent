@@ -320,7 +320,9 @@ def main():
         for loc in mountain_locations:
             print(f"\n--- {loc['name']} ({loc['mountain_range']}, {loc['zone']}) ---")
 
-            base_filename = f"{loc['mountain_range'].replace(' ', '_').lower()}_{loc['zone'].replace(' ', '_')}"
+            # Create unique filename using mountain range and location name
+            safe_name = loc['name'].replace(' ', '_').replace(',', '').replace('(', '').replace(')', '').lower()
+            base_filename = f"{loc['mountain_range'].replace(' ', '_').lower()}_{safe_name}"
             weather_cache_path = os.path.join(output_dir, f"{base_filename}_weather_data_24h.json")
 
             # Check if we have cached weather data (only if --use-cache is enabled)
