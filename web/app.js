@@ -54,6 +54,253 @@ const translations = {
 
 let currentLanguage = localStorage.getItem('language') || 'en';
 
+// ============================================
+// CLOTHING & EQUIPMENT DATA
+// ============================================
+const CLOTHING_DATA = {
+    equipment: {
+        mandatory_safety_kit: [
+            "Avalanche transceiver (3-antenna)",
+            "Avalanche probe (240-300 cm)",
+            "Avalanche shovel (metal blade)",
+            "Airbag backpack (recommended)"
+        ],
+        ski_touring_system: [
+            "Touring skis & bindings",
+            "Climbing skins",
+            "Ski crampons",
+            "Adjustable poles"
+        ],
+        navigation_communication: [
+            "Offline maps / GPS",
+            "Phone + power bank",
+            "Headlamp"
+        ],
+        emergency_repair: [
+            "First aid kit",
+            "Emergency bivy",
+            "Repair kit & multitool"
+        ],
+        food_hydration: [
+            "High-calorie food",
+            "Insulated water bottle",
+            "Electrolytes"
+        ]
+    },
+    clothing: {
+        always_carried: {
+            windstopper: ["Windproof shell jacket OR hardshell"],
+            hands: ["Liner gloves", "Insulated gloves/mittens", "Spare dry pair"],
+            head_face: ["Helmet", "Beanie", "Buff/gaiter", "Sunglasses", "Goggles"],
+            feet: ["Touring boots", "Merino ski socks"]
+        },
+        temperature_intervals: [
+            {
+                range: "below_-20",
+                label: "Extreme Cold (below -20°C)",
+                base_layer: { torso: "Heavy merino long-sleeve", legs: "Heavy merino bottoms" },
+                mid_layers: { active: "Fleece or active insulation", static: "Down/synthetic puffy for stops" },
+                outer: { jacket: "Hardshell jacket (windproof)", legs: "Hardshell pants" },
+                accessories: { hands: "Mittens + liners; spare mandatory", head: "Warm hat + buff; goggles recommended" },
+                notes: "Frostbite risk: cover all skin; limit stops"
+            },
+            {
+                range: "-20_to_-10",
+                label: "Very Cold (-20 to -10°C)",
+                base_layer: { torso: "Warm merino long-sleeve", legs: "Medium-warm bottoms" },
+                mid_layers: { active: "Light fleece or active insulation", static: "Packable puffy recommended" },
+                outer: { jacket: "Windproof shell OR hardshell", legs: "Windproof pants" },
+                accessories: { hands: "Insulated gloves/mittens + spare", head: "Buff + beanie; goggles if wind/snow" },
+                notes: "Start cool; vent early to prevent sweat freezing"
+            },
+            {
+                range: "-10_to_0",
+                label: "Cold (-10 to 0°C)",
+                base_layer: { torso: "Medium merino/synthetic", legs: "Light to medium bottoms" },
+                mid_layers: { active: "Light fleece", static: "Packable puffy for long breaks" },
+                outer: { jacket: "Windproof shell ALWAYS", legs: "Wind-resistant touring pants" },
+                accessories: { hands: "Liner + insulated gloves", head: "Beanie + buff; goggles if snow" },
+                notes: "Typical touring zone: breathable layers, add windstopper for descents"
+            },
+            {
+                range: "0_to_10",
+                label: "Cool (0 to 10°C)",
+                base_layer: { torso: "Lightweight wicking base", legs: "Thin tights or none" },
+                mid_layers: { active: "Optional thin fleece", static: "Light puffy for remote tours" },
+                outer: { jacket: "Windproof shell (carried/worn when exposed)", legs: "Breathable touring pants" },
+                accessories: { hands: "Liners for ascent; insulated for descent", head: "Sun hat + sunglasses" },
+                notes: "Overheating common: prioritize venting"
+            },
+            {
+                range: "above_10",
+                label: "Warm (above 10°C)",
+                base_layer: { torso: "Very light base + sun protection", legs: "Light touring pants" },
+                mid_layers: { active: "None typically", static: "Thin emergency insulation in pack" },
+                outer: { jacket: "Packable windproof shell ALWAYS", legs: "Light wind-resistant pants" },
+                accessories: { hands: "Thin gloves optional", head: "Sun hat + sunscreen mandatory" },
+                notes: "Sun/dehydration risks; windstopper still vital for descents"
+            }
+        ],
+        precipitation_overrides: {
+            heavy_snow: {
+                additions: ["Waterproof hardshell jacket", "Waterproof pants", "Goggles (storm lens)"],
+                notes: "Keep insulation dry; use vents"
+            },
+            wet_precip: {
+                additions: ["Fully waterproof hardshell", "Waterproof pants", "Waterproof gloves + spare", "Pack liner for insulation"],
+                notes: "Highest hypothermia risk; avoid long stops"
+            }
+        }
+    }
+};
+
+// Determine temperature range key
+function getTempRangeKey(tempFeelMin) {
+    if (tempFeelMin < -20) return "below_-20";
+    if (tempFeelMin < -10) return "-20_to_-10";
+    if (tempFeelMin < 0) return "-10_to_0";
+    if (tempFeelMin < 10) return "0_to_10";
+    return "above_10";
+}
+
+// Generate clothing & equipment advice from hourly data
+function generateClothingAdvice(hourlyData) {
+    if (!hourlyData || hourlyData.length === 0) {
+        return { sections: [], tempHeader: '' };
+    }
+
+    // Calculate temperature feel stats
+    const tempFeels = hourlyData.map(d => d.temperature_feel);
+    const tempFeelMin = Math.min(...tempFeels);
+    const tempFeelMax = Math.max(...tempFeels);
+    const tempFeelAvg = tempFeels.reduce((a, b) => a + b, 0) / tempFeels.length;
+
+    // Check precipitation
+    const totalPrecip = hourlyData.reduce((sum, d) => sum + d.precipitation, 0);
+    const { isSnowByHour } = calculateSnowInfo(hourlyData);
+    const hasSnow = isSnowByHour.some(s => s);
+    const hasHeavySnow = hasSnow && totalPrecip > 5;
+    const hasWetPrecip = totalPrecip > 3 && !hasSnow;
+
+    // Get temperature interval
+    const tempRangeKey = getTempRangeKey(tempFeelMin);
+    const tempInterval = CLOTHING_DATA.clothing.temperature_intervals.find(i => i.range === tempRangeKey);
+
+    if (!tempInterval) {
+        return { sections: [], tempHeader: '' };
+    }
+
+    const sections = [];
+
+    // Temperature header
+    const tempHeader = `Temperature (feels like): ${tempFeelMin.toFixed(0)}°C to ${tempFeelMax.toFixed(0)}°C`;
+
+    // Base Layers
+    sections.push({
+        title: "Base Layers",
+        items: [
+            `Torso: ${tempInterval.base_layer.torso}`,
+            `Legs: ${tempInterval.base_layer.legs}`
+        ]
+    });
+
+    // Mid Layers
+    sections.push({
+        title: "Mid Layers",
+        items: [
+            `Active: ${tempInterval.mid_layers.active}`,
+            `For stops: ${tempInterval.mid_layers.static}`
+        ]
+    });
+
+    // Outer Layers
+    sections.push({
+        title: "Outer Layers",
+        items: [
+            `Jacket: ${tempInterval.outer.jacket}`,
+            `Legs: ${tempInterval.outer.legs}`
+        ]
+    });
+
+    // Accessories
+    sections.push({
+        title: "Accessories",
+        items: [
+            `Hands: ${tempInterval.accessories.hands}`,
+            `Head/Face: ${tempInterval.accessories.head}`,
+            tempInterval.notes ? `Note: ${tempInterval.notes}` : null
+        ].filter(Boolean)
+    });
+
+    // Precipitation overrides
+    if (hasHeavySnow) {
+        sections.push({
+            title: "⚠️ Heavy Snow",
+            items: [
+                ...CLOTHING_DATA.clothing.precipitation_overrides.heavy_snow.additions,
+                CLOTHING_DATA.clothing.precipitation_overrides.heavy_snow.notes
+            ]
+        });
+    } else if (hasWetPrecip) {
+        sections.push({
+            title: "⚠️ Wet Conditions",
+            items: [
+                ...CLOTHING_DATA.clothing.precipitation_overrides.wet_precip.additions,
+                CLOTHING_DATA.clothing.precipitation_overrides.wet_precip.notes
+            ]
+        });
+    }
+
+    // Always carried
+    sections.push({
+        title: "Always Carried",
+        items: [
+            `Shell: ${CLOTHING_DATA.clothing.always_carried.windstopper.join(', ')}`,
+            `Hands: ${CLOTHING_DATA.clothing.always_carried.hands.join(', ')}`,
+            `Head: ${CLOTHING_DATA.clothing.always_carried.head_face.join(', ')}`
+        ]
+    });
+
+    // Equipment sections
+    sections.push({
+        title: "🎿 Avalanche Safety",
+        items: CLOTHING_DATA.equipment.mandatory_safety_kit
+    });
+
+    sections.push({
+        title: "🎿 Ski Touring Gear",
+        items: CLOTHING_DATA.equipment.ski_touring_system
+    });
+
+    sections.push({
+        title: "🧭 Navigation",
+        items: CLOTHING_DATA.equipment.navigation_communication
+    });
+
+    sections.push({
+        title: "🚑 Emergency",
+        items: CLOTHING_DATA.equipment.emergency_repair
+    });
+
+    sections.push({
+        title: "🍫 Food & Water",
+        items: CLOTHING_DATA.equipment.food_hydration
+    });
+
+    return { sections, tempHeader };
+}
+
+// Render advice section HTML
+function renderAdviceSection(section) {
+    const itemsHtml = section.items.map(item => `<li>${item}</li>`).join('');
+    return `
+        <div class="advice-section">
+            <h4>${section.title}</h4>
+            <ul>${itemsHtml}</ul>
+        </div>
+    `;
+}
+
 // Switch language function
 function switchLanguage(lang) {
     currentLanguage = lang;
@@ -195,40 +442,11 @@ async function updateCardDate(cardId, newDate) {
     // Create filenames
     const safeName = location.name.replace(/ /g, '_').replace(/,/g, '').replace(/\(/g, '').replace(/\)/g, '').toLowerCase();
     const baseFilename = `${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${safeName}`;
-    const adviceFilename = `${baseFilename}_model_advice_${currentLanguage}.md`;
     const hourlyDataFilename = `${baseFilename}_hourly_data_full_day.json`;
     const windAnalysisFilename = `${baseFilename}_wind_analysis.json`;
     const canvasId = `chart-${baseFilename}`;
 
     try {
-        // Load advice
-        const adviceResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${adviceFilename}`);
-        let adviceSections = [];
-        if (adviceResponse.ok) {
-            const adviceMarkdown = await adviceResponse.text();
-            adviceSections = parseAdviceMarkdown(adviceMarkdown);
-        }
-
-        // Update advice sections
-        if (adviceSections.length > 0) {
-            // Remove temperature section if present
-            if (adviceSections[0].title.includes('Temperature')) {
-                const tempHeader = card.querySelector('.temp-header');
-                if (tempHeader) {
-                    // Preserve the snow-accumulation span when updating
-                    tempHeader.innerHTML = `<h3>${adviceSections[0].title}</h3><span class="snow-accumulation"></span>`;
-                }
-                adviceSections = adviceSections.slice(1);
-            }
-
-            const adviceCardsHtml = adviceSections.map(section => renderSection(section)).join('');
-            const duplicatedCardsHtml = adviceCardsHtml + adviceCardsHtml;
-            const adviceSectionsEl = card.querySelector('.advice-sections');
-            if (adviceSectionsEl) {
-                adviceSectionsEl.innerHTML = duplicatedCardsHtml;
-            }
-        }
-
         // Load wind analysis
         const windResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${windAnalysisFilename}`);
         if (windResponse.ok) {
@@ -244,6 +462,33 @@ async function updateCardDate(cardId, newDate) {
         if (hourlyResponse.ok) {
             const hourlyData = await hourlyResponse.json();
             chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+
+            // Store hourly data in card for lazy advice generation
+            card.dataset.hourlyData = JSON.stringify(hourlyData);
+
+            // Reset advice generated flag so it regenerates on next click
+            const adviceSectionsEl = card.querySelector('.advice-sections');
+            if (adviceSectionsEl) {
+                delete adviceSectionsEl.dataset.generated;
+                adviceSectionsEl.innerHTML = '<!-- Advice will be regenerated on click -->';
+            }
+
+            // Collapse advice section if expanded
+            const adviceToggle = card.querySelector('.advice-toggle');
+            const adviceWrapper = card.querySelector('.advice-sections-wrapper');
+            if (adviceToggle && !adviceToggle.classList.contains('collapsed')) {
+                adviceToggle.classList.add('collapsed');
+                adviceWrapper.classList.remove('expanded');
+            }
+
+            // Update temperature header with feels-like range
+            const tempFeels = hourlyData.map(d => d.temperature_feel);
+            const tempFeelMin = Math.min(...tempFeels);
+            const tempFeelMax = Math.max(...tempFeels);
+            const tempHeader = card.querySelector('.temp-header');
+            if (tempHeader) {
+                tempHeader.innerHTML = `<h3>Temperature (feels like): ${tempFeelMin.toFixed(0)}°C to ${tempFeelMax.toFixed(0)}°C</h3><span class="snow-accumulation"></span>`;
+            }
 
             // Update snow accumulation in header
             const { totalSnowCm } = calculateSnowInfo(hourlyData);
@@ -988,73 +1233,8 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
 
     // Create unique filename using mountain range and location name (safeName already defined above)
     const baseFilename = `${location.mountain_range.replace(/ /g, '_').toLowerCase()}_${safeName}`;
-    const adviceFilename = `${baseFilename}_model_advice_${currentLanguage}.md`;
     const hourlyDataFilename = `${baseFilename}_hourly_data_full_day.json`;
     const windAnalysisFilename = `${baseFilename}_wind_analysis.json`;
-
-    // Load advice markdown
-    let adviceMarkdown = '';
-    let adviceSections = [];
-    try {
-        let response;
-
-        // Use local path with date directory or S3
-        if (useLocalPath) {
-            response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
-            console.log(`Fetching advice (local): ../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
-        } else {
-            // Try S3 first (only works for current/latest forecast)
-            response = await fetch(`./${adviceFilename}`);
-            console.log(`Fetching advice (S3): ./${adviceFilename}`);
-
-            // If S3 fails, try local path
-            if (!response.ok) {
-                console.log(`S3 not found (${response.status}), trying local: ../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
-                response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${adviceFilename}`);
-            }
-        }
-
-        if (response.ok) {
-            adviceMarkdown = await response.text();
-            console.log(`Loaded advice for ${location.name} (${currentLanguage}), length: ${adviceMarkdown.length}`);
-
-            if (adviceMarkdown.trim().length === 0) {
-                console.warn(`Advice file is empty for ${location.name}`);
-                throw new Error('Empty advice file');
-            }
-
-            adviceSections = parseAdviceMarkdown(adviceMarkdown);
-            console.log(`Parsed ${adviceSections.length} sections for ${location.name}`);
-        } else {
-            console.error(`Failed to fetch advice for ${location.name}: HTTP ${response.status}`);
-            throw new Error(`HTTP ${response.status}`);
-        }
-    } catch (error) {
-        console.error(`Error loading advice for ${location.name}:`, error);
-        adviceSections = [{
-            title: 'Loading Error',
-            content: [
-                `Could not load advice for ${location.name}`,
-                `Language: ${currentLanguage}`,
-                `Date: ${forecastDate}`,
-                'Try refreshing the page or selecting a different date'
-            ],
-            subsections: []
-        }];
-    }
-
-    if (adviceSections.length === 0) {
-        console.warn(`No sections parsed for ${location.name}, creating fallback`);
-        adviceSections = [{
-            title: 'No Advice Available',
-            content: [
-                `Advice data not available for ${location.name}`,
-                'This may be due to missing forecast data',
-                'Try selecting a different date or mountain range'
-            ],
-            subsections: []
-        }];
-    }
 
     // Generate unique canvas ID
     const canvasId = `chart-${baseFilename}`;
@@ -1080,26 +1260,16 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
         console.warn(`Could not load wind analysis for ${location.name}:`, error);
     }
 
-    // Extract temperature header if present
-    let tempHeader = '';
-    if (adviceSections.length > 0 && adviceSections[0].title.includes('Temperature')) {
-        tempHeader = `<div class="temp-header"><h3>${adviceSections[0].title}</h3><span class="snow-accumulation" id="snow-${baseFilename}"></span></div>`;
-        adviceSections = adviceSections.slice(1); // Remove temperature section from cards
-    }
-
-    // Render advice sections as horizontal cards (duplicate for seamless infinite scroll)
-    const adviceCardsHtml = adviceSections.map(section => renderSection(section)).join('');
-    const duplicatedCardsHtml = adviceCardsHtml + adviceCardsHtml; // Duplicate for seamless loop
-    console.log(`Generated HTML length for ${location.name}: ${adviceCardsHtml.length} chars`);
-
     // Generate card-level date selector
     const cardDateSelectorHtml = createCardDateSelector(forecastDate, cardId);
+
+    // Temperature header placeholder - will be populated when advice is generated
+    const tempHeader = `<div class="temp-header"><h3>Loading temperature...</h3><span class="snow-accumulation" id="snow-${baseFilename}"></span></div>`;
 
     card.innerHTML = `
         <div class="card-header">
             <h3>${location.name}</h3>
             <div class="location-meta">
-<!--                        <div class="meta-item"> <strong>${location.zone}</strong></div>-->
                 <div class="meta-item"><strong>${location.elevation}m</strong></div>
                 <div class="meta-item">${location.latitude.toFixed(3)}N, ${location.longitude.toFixed(3)}E</div>
             </div>
@@ -1120,18 +1290,12 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 </button>
                 <div class="advice-sections-wrapper">
                     <div class="advice-sections">
-                        ${duplicatedCardsHtml}
+                        <!-- Advice will be generated on click -->
                     </div>
                 </div>
             </div>
         </div>
     `;
-
-    // Enable drag scrolling on advice sections
-    const adviceSectionsEl = card.querySelector('.advice-sections');
-    if (adviceSectionsEl) {
-        enableDragScroll(adviceSectionsEl);
-    }
 
     // Load hourly data and create chart (wait for canvas to be in DOM)
     const loadChartWhenReady = async (retries = 10) => {
@@ -1166,6 +1330,18 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 const hourlyData = await response.json();
                 console.log(`Loaded hourly data for ${location.name}, ${hourlyData.length} data points`);
                 createWeatherChart(canvasId, hourlyData);
+
+                // Store hourly data in card for lazy advice generation
+                card.dataset.hourlyData = JSON.stringify(hourlyData);
+
+                // Update temperature header with feels-like range
+                const tempFeels = hourlyData.map(d => d.temperature_feel);
+                const tempFeelMin = Math.min(...tempFeels);
+                const tempFeelMax = Math.max(...tempFeels);
+                const tempHeaderEl = card.querySelector('.temp-header h3');
+                if (tempHeaderEl) {
+                    tempHeaderEl.textContent = `Temperature (feels like): ${tempFeelMin.toFixed(0)}°C to ${tempFeelMax.toFixed(0)}°C`;
+                }
 
                 // Update snow accumulation in header
                 const { totalSnowCm } = calculateSnowInfo(hourlyData);
@@ -1684,16 +1860,63 @@ function parseAdviceMarkdown(markdown) {
 // Toggle advice sections visibility
 function toggleAdvice(button) {
     const wrapper = button.nextElementSibling;
+    const card = button.closest('.location-card');
+    const adviceSections = wrapper.querySelector('.advice-sections');
+
     button.classList.toggle('collapsed');
     wrapper.classList.toggle('expanded');
 
-    // Update scroll indicator classes
-    if (wrapper.classList.contains('expanded')) {
-        const adviceSections = wrapper.querySelector('.advice-sections');
-        if (adviceSections) {
-            updateScrollIndicator(adviceSections, wrapper);
-            adviceSections.addEventListener('scroll', () => updateScrollIndicator(adviceSections, wrapper));
+    // Generate advice on first expand (lazy loading)
+    if (wrapper.classList.contains('expanded') && adviceSections && !adviceSections.dataset.generated) {
+        // Show loading state
+        adviceSections.innerHTML = `
+            <div class="advice-loading">
+                <div class="advice-loading-spinner"></div>
+                <div class="advice-loading-text">Analyzing weather conditions...</div>
+                <div class="advice-loading-bar"><div class="advice-loading-progress"></div></div>
+            </div>
+        `;
+
+        // Get hourly data from card dataset
+        const hourlyDataStr = card.dataset.hourlyData;
+        if (hourlyDataStr) {
+            // Small delay to show the loading animation
+            setTimeout(() => {
+                try {
+                    const hourlyData = JSON.parse(hourlyDataStr);
+                    const { sections, tempHeader } = generateClothingAdvice(hourlyData);
+
+                    // Update temp header if exists
+                    const tempHeaderEl = card.querySelector('.temp-header h3');
+                    if (tempHeaderEl && tempHeader) {
+                        // Keep the snow badge, update temperature text
+                        const snowBadge = card.querySelector('.snow-accumulation');
+                        const snowHtml = snowBadge ? snowBadge.outerHTML : '<span class="snow-accumulation"></span>';
+                        tempHeaderEl.parentElement.innerHTML = `<h3>${tempHeader}</h3>${snowHtml}`;
+                    }
+
+                    // Render advice sections
+                    const sectionsHtml = sections.map(s => renderAdviceSection(s)).join('');
+                    const duplicatedHtml = sectionsHtml + sectionsHtml; // For infinite scroll effect
+                    adviceSections.innerHTML = duplicatedHtml;
+                    adviceSections.dataset.generated = 'true';
+
+                    // Enable drag scroll
+                    enableDragScroll(adviceSections);
+                    updateScrollIndicator(adviceSections, wrapper);
+                    adviceSections.addEventListener('scroll', () => updateScrollIndicator(adviceSections, wrapper));
+                } catch (error) {
+                    console.error('Error generating advice:', error);
+                    adviceSections.innerHTML = '<div class="advice-error">Could not generate recommendations</div>';
+                }
+            }, 300);
+        } else {
+            adviceSections.innerHTML = '<div class="advice-error">Weather data not available</div>';
         }
+    } else if (wrapper.classList.contains('expanded') && adviceSections) {
+        // Already generated, just update scroll indicators
+        updateScrollIndicator(adviceSections, wrapper);
+        adviceSections.addEventListener('scroll', () => updateScrollIndicator(adviceSections, wrapper));
     }
 }
 
