@@ -1650,6 +1650,13 @@ function toggleRangeFilter(btn, ranges) {
         }
     });
 
+    // Track filter toggle
+    trackEvent('range_filter_toggle', {
+        ranges: ranges.join(', '),
+        action: isActive ? 'activated' : 'deactivated',
+        active_filters_count: activeRangeFilters.size
+    });
+
     // Re-apply filters
     applyFilters();
 }
@@ -1862,12 +1869,22 @@ function toggleAdvice(button) {
     const wrapper = button.nextElementSibling;
     const card = button.closest('.location-card');
     const adviceSections = wrapper.querySelector('.advice-sections');
+    const location = card.dataset.location ? JSON.parse(card.dataset.location) : {};
 
     button.classList.toggle('collapsed');
     wrapper.classList.toggle('expanded');
 
+    const isExpanded = wrapper.classList.contains('expanded');
+
+    // Track equipment/clothing section toggle
+    trackEvent('equipment_clothing_toggle', {
+        location_name: location.name || 'unknown',
+        mountain_range: location.mountain_range || 'unknown',
+        action: isExpanded ? 'opened' : 'closed'
+    });
+
     // Generate advice on first expand (lazy loading)
-    if (wrapper.classList.contains('expanded') && adviceSections && !adviceSections.dataset.generated) {
+    if (isExpanded && adviceSections && !adviceSections.dataset.generated) {
         // Show loading state
         adviceSections.innerHTML = `
             <div class="advice-loading">
