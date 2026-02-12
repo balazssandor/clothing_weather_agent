@@ -1821,8 +1821,6 @@ function createHistoryChart(canvasId, historyData) {
     // Extract data arrays
     const tempMin = dailyData.map(d => d.temp_min);
     const tempMax = dailyData.map(d => d.temp_max);
-    const tempFeelMin = dailyData.map(d => d.temp_feel_min);
-    const tempFeelMax = dailyData.map(d => d.temp_feel_max);
     const precipTotal = dailyData.map(d => d.precip_total);
     const windAvg = dailyData.map(d => d.wind_avg);
     const gustMax = dailyData.map(d => d.gust_max);
@@ -1868,29 +1866,6 @@ function createHistoryChart(canvasId, historyData) {
                     yAxisID: 'y',
                     pointRadius: 3,
                     pointHoverRadius: 5,
-                    borderWidth: 1.5,
-                    borderDash: [3, 3],
-                },
-                {
-                    label: 'Feel Max',
-                    data: tempFeelMax,
-                    borderColor: 'rgb(251, 146, 60)',
-                    tension: 0.4,
-                    fill: false,
-                    yAxisID: 'y',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    borderWidth: 2,
-                },
-                {
-                    label: 'Feel Min',
-                    data: tempFeelMin,
-                    borderColor: 'rgba(251, 146, 60, 0.5)',
-                    tension: 0.4,
-                    fill: false,
-                    yAxisID: 'y',
-                    pointRadius: 2,
-                    pointHoverRadius: 4,
                     borderWidth: 1.5,
                     borderDash: [3, 3],
                 },
@@ -1983,9 +1958,9 @@ function createHistoryChart(canvasId, historyData) {
                         const newHidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
                         meta.hidden = newHidden;
 
-                        // Link Wind Avg (index 5) and Gust Max (index 6) together
-                        if (index === 5 || index === 6) {
-                            const otherIndex = index === 5 ? 6 : 5;
+                        // Link Wind Avg (index 3) and Gust Max (index 4) together
+                        if (index === 3 || index === 4) {
+                            const otherIndex = index === 3 ? 4 : 3;
                             const otherMeta = ci.getDatasetMeta(otherIndex);
                             otherMeta.hidden = newHidden;
                         }
