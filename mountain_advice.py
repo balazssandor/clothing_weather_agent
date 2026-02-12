@@ -1,8 +1,9 @@
 import argparse
 import json
 import os
+import time
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from weather import (_get_tomorrow_weather_report_internal, HourlyForecastPoint, TomorrowWindowSummary,
                      wind_chill_with_gusts)
@@ -51,7 +52,12 @@ def _analyze_wind_from_saved_data(
         if os.path.exists(hourly_file):
             try:
                 with open(hourly_file, 'r') as f:
-                    hourly_data = json.load(f)
+                    hourly_data_raw = json.load(f)
+                    # Handle both old array format and new object format with 'data' property
+                    if isinstance(hourly_data_raw, dict) and 'data' in hourly_data_raw:
+                        hourly_data = hourly_data_raw['data']
+                    else:
+                        hourly_data = hourly_data_raw
                     for hour_data in hourly_data:
                         if hour_data.get('wind_speed') is not None and hour_data.get('wind_direction') is not None:
                             all_wind_data.append({
@@ -78,7 +84,12 @@ def _analyze_wind_from_saved_data(
             if os.path.exists(hourly_file) and check_date not in dates_with_data:
                 try:
                     with open(hourly_file, 'r') as f:
-                        hourly_data = json.load(f)
+                        hourly_data_raw = json.load(f)
+                        # Handle both old array format and new object format with 'data' property
+                        if isinstance(hourly_data_raw, dict) and 'data' in hourly_data_raw:
+                            hourly_data = hourly_data_raw['data']
+                        else:
+                            hourly_data = hourly_data_raw
                         for hour_data in hourly_data:
                             if hour_data.get('wind_speed') is not None and hour_data.get('wind_direction') is not None:
                                 all_wind_data.append({
@@ -342,6 +353,7 @@ def main():
 
             # Check if we have cached weather data (only if --use-cache is enabled)
             cache_valid = False
+            fetched_at = None  # Track when data was fetched from API
             if use_cache and os.path.exists(weather_cache_path):
                 print(f"Loading cached weather data from {weather_cache_path}")
                 with open(weather_cache_path, 'r') as f:
@@ -360,6 +372,8 @@ def main():
                             # Remove enriched fields not in dataclass
                             p_clean = {k: v for k, v in p.items() if k != 'temperature_feel'}
                             points_24h.append(HourlyForecastPoint(**p_clean))
+                        # Preserve fetched_at from cache
+                        fetched_at = cached_data.get('fetched_at')
                         cache_valid = True
 
             # Fetch new data if cache is disabled or invalid
@@ -377,12 +391,19 @@ def main():
                     day_offset=day_offset
                 )
 
+                # Wait between API calls to avoid rate limiting/timeouts
+                time.sleep(0.5)
+
+                # Record the time when data was fetched from API
+                fetched_at = datetime.now(timezone.utc).isoformat()
+
                 # Save weather data immediately to cache
                 cache_data = {
                     "location_data": loc,
                     "weather_report_text": report_24h,
                     "weather_summary": summary_24h.__dict__,
-                    "hourly_points": [_enrich_hourly_point(p) for p in points_24h]
+                    "hourly_points": [_enrich_hourly_point(p) for p in points_24h],
+                    "fetched_at": fetched_at  # When API was called
                 }
                 with open(weather_cache_path, 'w') as f:
                     json.dump(cache_data, f, indent=2)
@@ -426,9 +447,14 @@ def main():
                 f.write(report_full_day)
             print(f"Weather report (full day) saved to {weather_report_path}")
 
-            # Save hourly data for full 24h with temperature_feel enrichment
+            # Save hourly data for full 24h with temperature_feel enrichment and fetched_at timestamp
             hourly_data_path = os.path.join(output_dir, f"{base_filename}_hourly_data_full_day.json")
-            hourly_data = [_enrich_hourly_point(p) for p in points_24h]
+            hourly_data = {
+                "fetched_at": fetched_at,  # When API was called (ISO format UTC)
+                "forecast_date": forecast_date.isoformat(),
+                "location": loc['name'],
+                "data": [_enrich_hourly_point(p) for p in points_24h]
+            }
             with open(hourly_data_path, 'w') as f:
                 json.dump(hourly_data, f, indent=2)
             print(f"Hourly data (full day) saved to {hourly_data_path}")

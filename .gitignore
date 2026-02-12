@@ -1,6 +1,16 @@
 locations.json
 __pycache__/
-mountain_locations.json
 .aws/
 *.pem
 .env
+
+# Lambda build artifacts
+lambda_package/
+lambda_package.zip
+lambda_package_dummy.zip
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/.terraform.lock.hcl
+terraform/terraform.tfvars

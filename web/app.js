@@ -16,7 +16,8 @@ const translations = {
         temperature: "Temperature",
         precipitation: "Precipitation",
         wind: "Wind",
-        dateFormat: "Ski Touring Conditions & Advice"
+        dateFormat: "Ski Touring Conditions & Advice",
+        lastUpdated: "Last updated"
     },
     ro: {
         title: "Vreme Muntii Romaniei",
@@ -32,7 +33,8 @@ const translations = {
         temperature: "Temperatura",
         precipitation: "Precipitatii",
         wind: "Vant",
-        dateFormat: "Conditii Schi-Tura & Sfaturi"
+        dateFormat: "Conditii Schi-Tura & Sfaturi",
+        lastUpdated: "Ultima actualizare"
     },
     hu: {
         title: "Roman Hegyi Idojaras",
@@ -48,7 +50,8 @@ const translations = {
         temperature: "Homerseklet",
         precipitation: "Csapadek",
         wind: "Szel",
-        dateFormat: "Situra Feltetelek & Tanacsok"
+        dateFormat: "Situra Feltetelek & Tanacsok",
+        lastUpdated: "Utolso frissites"
     }
 };
 
@@ -460,10 +463,14 @@ async function updateCardDate(cardId, newDate) {
         // Load hourly data and recreate chart
         const hourlyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${hourlyDataFilename}`);
         if (hourlyResponse.ok) {
-            const hourlyData = await hourlyResponse.json();
+            const hourlyDataRaw = await hourlyResponse.json();
+            const normalized = normalizeHourlyData(hourlyDataRaw);
+            const hourlyData = normalized.data;
+            const fetchedAt = normalized.fetchedAt;
+
             chartContainer.innerHTML = `<canvas id="${canvasId}"></canvas>`;
 
-            // Store hourly data in card for lazy advice generation
+            // Store hourly data in card for lazy advice generation (store normalized data array)
             card.dataset.hourlyData = JSON.stringify(hourlyData);
 
             // Reset advice generated flag so it regenerates on next click
@@ -504,7 +511,7 @@ async function updateCardDate(cardId, newDate) {
 
             // Wait for canvas to be ready
             requestAnimationFrame(() => {
-                createWeatherChart(canvasId, hourlyData);
+                createWeatherChart(canvasId, hourlyData, fetchedAt);
                 initChartToggles(canvasId);
             });
         } else {
@@ -1118,8 +1125,46 @@ function initChartToggles(canvasId) {
     chart.update();
 }
 
+// Normalize hourly data - handles both old array format and new object format with fetched_at
+function normalizeHourlyData(hourlyData) {
+    // New format: { fetched_at: "...", forecast_date: "...", location: "...", data: [...] }
+    if (hourlyData && typeof hourlyData === 'object' && !Array.isArray(hourlyData) && hourlyData.data) {
+        return {
+            data: hourlyData.data,
+            fetchedAt: hourlyData.fetched_at || null,
+            forecastDate: hourlyData.forecast_date || null,
+            location: hourlyData.location || null
+        };
+    }
+    // Old format: direct array
+    return {
+        data: hourlyData || [],
+        fetchedAt: null,
+        forecastDate: null,
+        location: null
+    };
+}
+
+// Format fetched_at timestamp for display
+function formatFetchedAt(fetchedAt, lang = currentLanguage) {
+    if (!fetchedAt) return null;
+    try {
+        const date = new Date(fetchedAt);
+        const options = {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        };
+        return date.toLocaleString(lang === 'ro' ? 'ro-RO' : lang === 'hu' ? 'hu-HU' : 'en-US', options);
+    } catch (e) {
+        return fetchedAt;
+    }
+}
+
 // Create a weather chart
-function createWeatherChart(canvasId, hourlyData) {
+function createWeatherChart(canvasId, hourlyData, fetchedAt = null) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return null;
 
@@ -1130,10 +1175,15 @@ function createWeatherChart(canvasId, hourlyData) {
 
     const ctx = canvas.getContext('2d');
 
+    // Normalize data (handle both old array and new object format)
+    const normalized = normalizeHourlyData(hourlyData);
+    const dataArray = normalized.data;
+    const actualFetchedAt = fetchedAt || normalized.fetchedAt;
+
     // On mobile, filter to daytime hours (8am-6pm) for better usability
-    let filteredData = hourlyData;
+    let filteredData = dataArray;
     if (isMobile()) {
-        filteredData = hourlyData.filter(d => d.hour >= 8 && d.hour <= 18);
+        filteredData = dataArray.filter(d => d.hour >= 8 && d.hour <= 18);
     }
 
     // Extract data
@@ -1226,6 +1276,18 @@ function createWeatherChart(canvasId, hourlyData) {
                 intersect: false,
             },
             plugins: {
+                subtitle: actualFetchedAt ? {
+                    display: true,
+                    text: `${translations[currentLanguage].lastUpdated}: ${formatFetchedAt(actualFetchedAt)}`,
+                    color: 'rgb(148, 163, 184)',
+                    font: {
+                        size: 11,
+                        style: 'italic'
+                    },
+                    padding: {
+                        bottom: 10
+                    }
+                } : { display: false },
                 legend: {
                     position: 'top',
                     labels: {
@@ -1477,12 +1539,16 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
             }
 
             if (response.ok) {
-                const hourlyData = await response.json();
+                const hourlyDataRaw = await response.json();
+                const normalized = normalizeHourlyData(hourlyDataRaw);
+                const hourlyData = normalized.data;
+                const fetchedAt = normalized.fetchedAt;
+
                 console.log(`Loaded hourly data for ${location.name}, ${hourlyData.length} data points`);
-                createWeatherChart(canvasId, hourlyData);
+                createWeatherChart(canvasId, hourlyData, fetchedAt);
                 initChartToggles(canvasId);
 
-                // Store hourly data in card for lazy advice generation
+                // Store hourly data in card for lazy advice generation (store normalized data array)
                 card.dataset.hourlyData = JSON.stringify(hourlyData);
 
                 // Update temperature header with feels-like range

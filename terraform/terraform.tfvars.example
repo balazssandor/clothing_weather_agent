@@ -1,0 +1,24 @@
+# Example Terraform variables
+# Copy this file to terraform.tfvars and customize as needed
+
+aws_region           = "us-east-1"
+s3_bucket_name       = "static-sites-outdoor-activities-clothing-romania"
+lambda_function_name = "mountain-weather-forecast-generator"
+
+# Keep data accessible to frontend for 7 days
+data_retention_days = 7
+
+# Schedules are defined in eventbridge.tf:
+# - Morning:   05:00 UTC (7am winter / 8am summer Romania)
+# - Afternoon: 12:00 UTC (2pm winter / 3pm summer Romania)
+# - Evening:   18:00 UTC (8pm winter / 9pm summer Romania)
+
+# Lambda configuration
+lambda_timeout = 900  # 15 minutes
+lambda_memory  = 512  # MB
+
+tags = {
+  Project     = "mountain-weather"
+  Environment = "production"
+  ManagedBy   = "terraform"
+}

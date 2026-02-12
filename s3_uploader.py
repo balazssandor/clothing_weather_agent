@@ -10,10 +10,9 @@ from s3_config import S3_BUCKET_NAME, AWS_REGION
 
 def upload_directory_to_s3(local_dir: str, date_str: str = None, dry_run: bool = False, include_config: bool = True) -> bool:
     """
-    Upload all files from a local directory to S3 bucket root
+    Upload all files from a local directory to S3 bucket preserving directory structure.
 
-    Files are uploaded directly to the bucket root (no subfolders).
-    Files are overwritten each time with the latest forecast.
+    Files are uploaded to their corresponding path in S3 (e.g., tomorrow_mountain_forecast_data/date=YYYY-MM-DD/file.json).
 
     Args:
         local_dir: Local directory path (e.g., "tomorrow_mountain_forecast_data/date=2026-01-28")
@@ -80,7 +79,13 @@ def upload_directory_to_s3(local_dir: str, date_str: str = None, dry_run: bool =
         for file_path in files:
             if os.path.isfile(file_path):
                 filename = os.path.basename(file_path)
-                s3_key = filename  # Upload to bucket root
+
+                # Preserve directory structure for forecast data, config files go to root
+                if local_dir in file_path:
+                    # Use the local_dir as the S3 prefix (e.g., tomorrow_mountain_forecast_data/date=.../file.json)
+                    s3_key = os.path.join(local_dir, filename)
+                else:
+                    s3_key = filename  # Config files go to bucket root
 
                 # Determine content type
                 content_type = 'application/octet-stream'
