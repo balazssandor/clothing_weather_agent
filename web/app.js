@@ -17,7 +17,11 @@ const translations = {
         precipitation: "Precipitation",
         wind: "Wind",
         dateFormat: "Ski Touring Conditions & Advice",
-        lastUpdated: "Last updated"
+        lastUpdated: "Last updated",
+        cloudCover: "Cloud Cover",
+        fog: "Fog",
+        rimeFog: "Rime fog",
+        weekHistory: "7-Day History"
     },
     ro: {
         title: "Vreme Muntii Romaniei",
@@ -34,7 +38,11 @@ const translations = {
         precipitation: "Precipitatii",
         wind: "Vant",
         dateFormat: "Conditii Schi-Tura & Sfaturi",
-        lastUpdated: "Ultima actualizare"
+        lastUpdated: "Ultima actualizare",
+        cloudCover: "Acoperire Nori",
+        fog: "Ceață",
+        rimeFog: "Chiciură",
+        weekHistory: "Istoric 7 Zile"
     },
     hu: {
         title: "Roman Hegyi Idojaras",
@@ -51,7 +59,11 @@ const translations = {
         precipitation: "Csapadek",
         wind: "Szel",
         dateFormat: "Situra Feltetelek & Tanacsok",
-        lastUpdated: "Utolso frissites"
+        lastUpdated: "Utolso frissites",
+        cloudCover: "Felhozet",
+        fog: "Köd",
+        rimeFog: "Zúzmara",
+        weekHistory: "7 Napos Előzmény"
     }
 };
 
@@ -494,7 +506,7 @@ async function updateCardDate(cardId, newDate) {
             const tempFeelMax = Math.max(...tempFeels);
             const tempHeader = card.querySelector('.temp-header');
             if (tempHeader) {
-                tempHeader.innerHTML = `<h3>Temperature (feels like): ${tempFeelMin.toFixed(0)}°C to ${tempFeelMax.toFixed(0)}°C</h3><span class="snow-accumulation"></span>`;
+                tempHeader.innerHTML = `<h3>Temperature (feels like): ${tempFeelMin.toFixed(0)}°C to ${tempFeelMax.toFixed(0)}°C</h3><div class="weather-badges"><span class="snow-accumulation"></span><span class="fog-warning"></span></div>`;
             }
 
             // Update snow accumulation in header
@@ -502,18 +514,39 @@ async function updateCardDate(cardId, newDate) {
             const snowEl = card.querySelector('.snow-accumulation');
             if (snowEl) {
                 const snowFormatted = formatSnowAmount(totalSnowCm);
-                if (snowFormatted) {
-                    snowEl.innerHTML = `<span class="snow-badge">❄ ${snowFormatted}cm snow</span>`;
-                } else {
-                    snowEl.innerHTML = '';
-                }
+                snowEl.innerHTML = snowFormatted
+                    ? `<span class="snow-badge">❄ ${snowFormatted}cm snow</span>`
+                    : '';
+            }
+
+            // Update fog warning in header
+            const fogInfo = calculateFogInfo(hourlyData);
+            const fogEl = card.querySelector('.fog-warning');
+            if (fogEl) {
+                const fogWarning = formatFogWarning(fogInfo);
+                fogEl.innerHTML = fogWarning
+                    ? `<span class="fog-badge">${fogInfo.hasRimeFog ? '🧊' : '🌫️'} ${fogWarning}</span>`
+                    : '';
             }
 
             // Wait for canvas to be ready
             requestAnimationFrame(() => {
                 createWeatherChart(canvasId, hourlyData, fetchedAt);
                 initChartToggles(canvasId);
+                createCloudChart(`${canvasId}-clouds`, hourlyData);
             });
+
+            // Load and update 7-day history chart
+            const historyFilename = `${baseFilename}_7day_history.json`;
+            try {
+                const historyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${historyFilename}`);
+                if (historyResponse.ok) {
+                    const historyData = await historyResponse.json();
+                    createHistoryChart(`${canvasId}-history`, historyData);
+                }
+            } catch (historyError) {
+                console.warn(`Could not load history:`, historyError);
+            }
         } else {
             chartContainer.innerHTML = `<div class="chart-error">${translations[currentLanguage].chartNotAvailable}</div>`;
         }
@@ -527,7 +560,7 @@ async function updateCardDate(cardId, newDate) {
 // Generate array of dates from past 6 days to future 3 days
 function getDateRange() {
     const dates = [];
-    for (let offset = -6; offset <= 3; offset++) {
+    for (let offset = -6; offset <= 5; offset++) {
         const date = getDateOffset(offset);
         const dateObj = new Date(date);
         const label = offset === 0 ? 'Today' :
@@ -918,8 +951,9 @@ const windDirectionPlugin = {
         const windDataset = chart.data.datasets[2]; // Wind Speed dataset (index 2)
         const meta = chart.getDatasetMeta(2);
 
-        // Don't draw if wind dataset is hidden or missing
-        if (!meta || !windDataset || windDataset.hidden || !windDataset.windDirections) return;
+        // Don't draw if wind dataset is hidden or missing (check both dataset.hidden and meta.hidden)
+        if (!meta || !windDataset || !windDataset.windDirections) return;
+        if (windDataset.hidden || meta.hidden) return;
 
         const windDirections = windDataset.windDirections;
         const windColor = 'rgb(14, 165, 233)';
@@ -988,18 +1022,61 @@ function calculateSnowInfo(hourlyData) {
     return { totalSnowCm, isSnowByHour };
 }
 
+// Fog weather codes (WMO codes 45 = fog, 48 = depositing rime fog / freezing fog)
+const FOG_WEATHER_CODES = [45, 48];
+
+// Calculate fog info from hourly data
+// Returns { hasFog: boolean, hasRimeFog: boolean, fogHours: number[], fogStartHour: number|null, fogEndHour: number|null }
+function calculateFogInfo(hourlyData) {
+    const fogHours = [];
+    let hasRimeFog = false;
+
+    hourlyData.forEach(d => {
+        if (FOG_WEATHER_CODES.includes(d.weather_code)) {
+            fogHours.push(d.hour);
+            if (d.weather_code === 48) {
+                hasRimeFog = true; // Depositing rime fog (freezing fog) - more dangerous
+            }
+        }
+    });
+
+    const hasFog = fogHours.length > 0;
+    const fogStartHour = hasFog ? Math.min(...fogHours) : null;
+    const fogEndHour = hasFog ? Math.max(...fogHours) : null;
+
+    return { hasFog, hasRimeFog, fogHours, fogStartHour, fogEndHour };
+}
+
+// Format fog warning text
+function formatFogWarning(fogInfo, lang = currentLanguage) {
+    if (!fogInfo.hasFog) return null;
+
+    const { hasRimeFog, fogHours, fogStartHour, fogEndHour } = fogInfo;
+    const fogType = hasRimeFog ? translations[lang].rimeFog : translations[lang].fog;
+
+    if (fogHours.length === 1) {
+        return `${fogType} ${String(fogStartHour).padStart(2, '0')}:00`;
+    } else if (fogHours.length <= 3) {
+        return `${fogType} ${fogHours.map(h => String(h).padStart(2, '0') + ':00').join(', ')}`;
+    } else {
+        return `${fogType} ${String(fogStartHour).padStart(2, '0')}:00-${String(fogEndHour).padStart(2, '0')}:00`;
+    }
+}
+
 // Chart.js plugin to draw snowflakes on snow precipitation bars
 const snowflakePlugin = {
     id: 'snowflakePlugin',
     afterDatasetsDraw(chart, args, options) {
         const { ctx } = chart;
-        const precipDataset = chart.data.datasets.find(ds => ds.label && ds.label.includes('Precipitation'));
+        const precipDatasetIndex = chart.data.datasets.findIndex(ds => ds.label && ds.label.includes('Precipitation'));
+        if (precipDatasetIndex === -1) return;
 
-        // Don't draw if precipitation dataset is hidden or missing
-        if (!precipDataset || precipDataset.hidden || !precipDataset.isSnowByHour) return;
+        const precipDataset = chart.data.datasets[precipDatasetIndex];
+        const meta = chart.getDatasetMeta(precipDatasetIndex);
 
-        const datasetIndex = chart.data.datasets.indexOf(precipDataset);
-        const meta = chart.getDatasetMeta(datasetIndex);
+        // Don't draw if precipitation dataset is hidden (check both dataset.hidden and meta.hidden)
+        if (!precipDataset || !precipDataset.isSnowByHour) return;
+        if (precipDataset.hidden || meta.hidden) return;
 
         ctx.save();
         ctx.font = '14px Arial';
@@ -1016,6 +1093,129 @@ const snowflakePlugin = {
                 const x = bar.x;
                 const y = bar.y - 5;
                 ctx.fillText('❄', x, y);
+            }
+        });
+
+        ctx.restore();
+    }
+};
+
+// Chart.js plugin to draw wind direction arrows on history chart (7-day)
+const historyWindDirectionPlugin = {
+    id: 'historyWindDirectionPlugin',
+    afterDatasetsDraw(chart, args, options) {
+        const { ctx } = chart;
+        const windDatasetIndex = chart.data.datasets.findIndex(ds => ds.windDirections);
+        if (windDatasetIndex === -1) return;
+
+        const windDataset = chart.data.datasets[windDatasetIndex];
+        const meta = chart.getDatasetMeta(windDatasetIndex);
+
+        // Don't draw if wind dataset is hidden (check both dataset.hidden and meta.hidden)
+        if (!windDataset || !windDataset.windDirections) return;
+        if (windDataset.hidden || meta.hidden) return;
+
+        ctx.save();
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        meta.data.forEach((point, index) => {
+            const direction = windDataset.windDirections[index];
+            if (direction === null || direction === undefined) return;
+
+            const x = point.x;
+            const y = point.y - 15;
+
+            // Draw arrow showing where wind is blowing TO (add 180 to direction)
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(((direction + 180) * Math.PI) / 180);
+
+            // Draw arrow pointing in direction wind is blowing
+            ctx.beginPath();
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.8)';
+            ctx.moveTo(0, -6);
+            ctx.lineTo(-4, 4);
+            ctx.lineTo(0, 2);
+            ctx.lineTo(4, 4);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        });
+
+        ctx.restore();
+    }
+};
+
+// Chart.js plugin to draw snowflakes on history chart (7-day)
+const historySnowflakePlugin = {
+    id: 'historySnowflakePlugin',
+    afterDatasetsDraw(chart, args, options) {
+        const { ctx } = chart;
+        const precipDatasetIndex = chart.data.datasets.findIndex(ds => ds.hasSnowByDay);
+        if (precipDatasetIndex === -1) return;
+
+        const precipDataset = chart.data.datasets[precipDatasetIndex];
+        const meta = chart.getDatasetMeta(precipDatasetIndex);
+
+        // Don't draw if precip dataset is hidden (check both dataset.hidden and meta.hidden)
+        if (!precipDataset || !precipDataset.hasSnowByDay) return;
+        if (precipDataset.hidden || meta.hidden) return;
+
+        ctx.save();
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = '#a8d5e5';
+
+        meta.data.forEach((bar, index) => {
+            const hasSnow = precipDataset.hasSnowByDay[index];
+            const value = precipDataset.data[index];
+
+            if (value > 0 && hasSnow) {
+                // Draw snowflake above the bar
+                const x = bar.x;
+                const y = bar.y - 5;
+                ctx.fillText('❄', x, y);
+            }
+        });
+
+        ctx.restore();
+    }
+};
+
+// Chart.js plugin to draw rime fog indicator on history chart (7-day)
+const historyRimeFogPlugin = {
+    id: 'historyRimeFogPlugin',
+    afterDraw(chart, args, options) {
+        const { ctx } = chart;
+        const cloudDatasetIndex = chart.data.datasets.findIndex(ds => ds.hasRimeFogByDay);
+        if (cloudDatasetIndex === -1) return;
+
+        const cloudDataset = chart.data.datasets[cloudDatasetIndex];
+
+        // Always draw rime fog indicators (important safety info), regardless of cloud visibility
+        if (!cloudDataset || !cloudDataset.hasRimeFogByDay) return;
+
+        ctx.save();
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        // Get the x-axis scale for positioning - draw below the x-axis labels
+        const xScale = chart.scales.x;
+        const chartBottom = chart.chartArea.bottom;
+
+        chart.data.labels.forEach((label, index) => {
+            const hasRimeFog = cloudDataset.hasRimeFogByDay[index];
+
+            if (hasRimeFog) {
+                // Draw rime fog indicator below x-axis labels
+                const x = xScale.getPixelForValue(index);
+                const y = chartBottom + 28; // Below the date labels
+                ctx.fillText('🧊', x, y);
             }
         });
 
@@ -1411,6 +1611,530 @@ function createWeatherChart(canvasId, hourlyData, fetchedAt = null) {
     return newChart;
 }
 
+// Create cloud cover chart with all 4 layers
+function createCloudChart(canvasId, hourlyData) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    // If a chart instance already exists for this canvas, destroy it
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+
+    // Normalize data (handle both old array and new object format)
+    const normalized = normalizeHourlyData(hourlyData);
+    const dataArray = normalized.data;
+
+    // On mobile, filter to daytime hours (8am-6pm) for better usability
+    let filteredData = dataArray;
+    if (isMobile()) {
+        filteredData = dataArray.filter(d => d.hour >= 8 && d.hour <= 18);
+    }
+
+    // Extract cloud data
+    const hours = filteredData.map(d => `${String(d.hour).padStart(2, '0')}:00`);
+    const cloudTotal = filteredData.map(d => d.cloud_cover ?? null);
+    const cloudLow = filteredData.map(d => d.cloud_cover_low ?? null);
+    const cloudMid = filteredData.map(d => d.cloud_cover_mid ?? null);
+    const cloudHigh = filteredData.map(d => d.cloud_cover_high ?? null);
+
+    // Check if we have any cloud data
+    const hasCloudData = cloudTotal.some(v => v !== null);
+    if (!hasCloudData) {
+        canvas.parentElement.innerHTML = '<div class="chart-error">Cloud data not available</div>';
+        return null;
+    }
+
+    const newChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: hours,
+            datasets: [
+                {
+                    label: 'Total',
+                    data: cloudTotal,
+                    borderColor: 'rgb(107, 114, 128)',
+                    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                },
+                {
+                    label: 'Low (<3km)',
+                    data: cloudLow,
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                    tension: 0.4,
+                    fill: false,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                },
+                {
+                    label: 'Mid (3-8km)',
+                    data: cloudMid,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    tension: 0.4,
+                    fill: false,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                },
+                {
+                    label: 'High (>8km)',
+                    data: cloudHigh,
+                    borderColor: 'rgb(168, 85, 247)',
+                    backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                    tension: 0.4,
+                    fill: false,
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: 'rgb(248, 250, 252)',
+                        padding: 10,
+                        font: {
+                            size: 11,
+                            weight: '500'
+                        },
+                        boxWidth: 12,
+                        boxHeight: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    titleColor: 'rgb(248, 250, 252)',
+                    bodyColor: 'rgb(203, 213, 225)',
+                    borderColor: 'rgb(51, 65, 85)',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toFixed(0) + '%';
+                            } else {
+                                label += 'N/A';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(51, 65, 85, 0.5)',
+                    },
+                    ticks: {
+                        color: 'rgb(203, 213, 225)',
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    min: 0,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: '%',
+                        color: 'rgb(156, 163, 175)',
+                        font: {
+                            size: 11,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(51, 65, 85, 0.3)',
+                    },
+                    ticks: {
+                        color: 'rgb(156, 163, 175)',
+                        font: {
+                            size: 10
+                        },
+                        stepSize: 25
+                    }
+                }
+            }
+        }
+    });
+
+    chartInstances[canvasId] = newChart;
+    return newChart;
+}
+
+// Create 7-day history chart showing daily aggregates
+function createHistoryChart(canvasId, historyData) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    // If a chart instance already exists for this canvas, destroy it
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+
+    // Check if we have valid data
+    if (!historyData || !historyData.daily_data || historyData.daily_data.length === 0) {
+        canvas.parentElement.innerHTML = '<div class="chart-error">No historical data available yet</div>';
+        return null;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const dailyData = historyData.daily_data;
+    const mobile = isMobile();
+
+    // Format dates for labels (e.g., "Feb 10")
+    const labels = dailyData.map(d => {
+        const date = new Date(d.date);
+        return date.toLocaleDateString(currentLanguage === 'ro' ? 'ro-RO' : currentLanguage === 'hu' ? 'hu-HU' : 'en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+    });
+
+    // Extract data arrays
+    const tempMin = dailyData.map(d => d.temp_min);
+    const tempMax = dailyData.map(d => d.temp_max);
+    const tempFeelMin = dailyData.map(d => d.temp_feel_min);
+    const tempFeelMax = dailyData.map(d => d.temp_feel_max);
+    const precipTotal = dailyData.map(d => d.precip_total);
+    const windAvg = dailyData.map(d => d.wind_avg);
+    const gustMax = dailyData.map(d => d.gust_max);
+    const cloudAvg = dailyData.map(d => d.cloud_avg);
+    const windDirections = dailyData.map(d => d.wind_direction);
+    const hasSnowByDay = dailyData.map(d => d.has_snow || false);
+    const snowPrecipByDay = dailyData.map(d => d.snow_precip_mm || 0);
+    const hasRimeFogByDay = dailyData.map(d => d.has_rime_fog || false);
+    const fogHoursByDay = dailyData.map(d => d.fog_hours || 0);
+    const rimeFogVsSnowByDay = dailyData.map(d => d.rime_fog_vs_snow || null);
+    const rimeFogVsWindByDay = dailyData.map(d => d.rime_fog_vs_wind || null);
+
+    // Create bar colors based on snow (light blue for snow, blue for rain)
+    const precipColors = hasSnowByDay.map(isSnow =>
+        isSnow ? 'rgba(173, 216, 230, 0.7)' : 'rgba(59, 130, 246, 0.6)'
+    );
+
+    const newChart = new Chart(ctx, {
+        type: 'line',
+        plugins: [historyWindDirectionPlugin, historySnowflakePlugin, historyRimeFogPlugin],
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Temp Max',
+                    data: tempMax,
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    tension: 0.4,
+                    fill: false,
+                    yAxisID: 'y',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
+                },
+                {
+                    label: 'Temp Min',
+                    data: tempMin,
+                    borderColor: 'rgba(239, 68, 68, 0.5)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                    tension: 0.4,
+                    fill: '-1',
+                    yAxisID: 'y',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                },
+                {
+                    label: 'Feel Max',
+                    data: tempFeelMax,
+                    borderColor: 'rgb(251, 146, 60)',
+                    tension: 0.4,
+                    fill: false,
+                    yAxisID: 'y',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    borderWidth: 2,
+                },
+                {
+                    label: 'Feel Min',
+                    data: tempFeelMin,
+                    borderColor: 'rgba(251, 146, 60, 0.5)',
+                    tension: 0.4,
+                    fill: false,
+                    yAxisID: 'y',
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                },
+                {
+                    label: 'Precip',
+                    data: precipTotal,
+                    type: 'bar',
+                    backgroundColor: precipColors,
+                    yAxisID: 'y2',
+                    order: 1,
+                    hasSnowByDay: hasSnowByDay, // Custom property for snowflake plugin
+                    snowPrecipByDay: snowPrecipByDay,
+                },
+                {
+                    label: 'Wind Avg',
+                    data: windAvg,
+                    borderColor: 'rgb(14, 165, 233)',
+                    tension: 0.4,
+                    fill: false,
+                    yAxisID: 'y1',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    borderWidth: 2,
+                    hidden: mobile, // Hidden only on mobile
+                    windDirections: windDirections, // Custom property for wind direction plugin
+                },
+                {
+                    label: 'Gust Max',
+                    data: gustMax,
+                    borderColor: 'rgba(14, 165, 233, 0.5)',
+                    tension: 0.4,
+                    fill: false,
+                    yAxisID: 'y1',
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.5,
+                    borderDash: [3, 3],
+                    hidden: mobile, // Hidden only on mobile
+                },
+                {
+                    label: 'Cloud %',
+                    data: cloudAvg,
+                    borderColor: 'rgb(156, 163, 175)',
+                    backgroundColor: 'rgba(156, 163, 175, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y3',
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.5,
+                    hidden: mobile, // Hidden only on mobile
+                    hasRimeFogByDay: hasRimeFogByDay, // Custom property for rime fog plugin
+                    fogHoursByDay: fogHoursByDay,
+                    rimeFogVsSnowByDay: rimeFogVsSnowByDay,
+                    rimeFogVsWindByDay: rimeFogVsWindByDay,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            layout: {
+                padding: {
+                    bottom: 22 // Space for rime fog indicators below x-axis
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: 'rgb(248, 250, 252)',
+                        padding: 8,
+                        font: {
+                            size: 10,
+                            weight: '500'
+                        },
+                        boxWidth: 10,
+                        boxHeight: 10
+                    },
+                    onClick: function(e, legendItem, legend) {
+                        const index = legendItem.datasetIndex;
+                        const ci = legend.chart;
+                        const meta = ci.getDatasetMeta(index);
+
+                        // Calculate new hidden state
+                        const newHidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+                        meta.hidden = newHidden;
+
+                        // Link Wind Avg (index 5) and Gust Max (index 6) together
+                        if (index === 5 || index === 6) {
+                            const otherIndex = index === 5 ? 6 : 5;
+                            const otherMeta = ci.getDatasetMeta(otherIndex);
+                            otherMeta.hidden = newHidden;
+                        }
+
+                        ci.update();
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    titleColor: 'rgb(248, 250, 252)',
+                    bodyColor: 'rgb(203, 213, 225)',
+                    borderColor: 'rgb(51, 65, 85)',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) {
+                                if (label.includes('Temp') || label.includes('Feel')) {
+                                    label += context.parsed.y.toFixed(1) + '°C';
+                                } else if (label.includes('Wind') || label.includes('Gust')) {
+                                    label += context.parsed.y.toFixed(0) + ' km/h';
+                                } else if (label.includes('Precip')) {
+                                    const index = context.dataIndex;
+                                    const hasSnow = context.dataset.hasSnowByDay && context.dataset.hasSnowByDay[index];
+                                    if (hasSnow && context.parsed.y > 0) {
+                                        // 1mm precipitation = 1cm snow - show only snow amount
+                                        const snowCm = context.parsed.y;
+                                        label += `❄ ~${formatSnowAmount(snowCm)}cm snow`;
+                                    } else {
+                                        label += context.parsed.y.toFixed(1) + ' mm';
+                                    }
+                                } else if (label.includes('Cloud')) {
+                                    label += context.parsed.y.toFixed(0) + '%';
+                                }
+                            }
+                            return label;
+                        },
+                        afterLabel: function(context) {
+                            const index = context.dataIndex;
+                            // Show wind direction for Wind Avg dataset
+                            if (context.dataset.windDirections && context.dataIndex !== undefined) {
+                                const direction = context.dataset.windDirections[index];
+                                if (direction !== null && direction !== undefined) {
+                                    const cardinalDir = getCardinalDirection(direction);
+                                    return `Direction: from ${cardinalDir} (${direction}°)`;
+                                }
+                            }
+                            return null;
+                        },
+                        footer: function(tooltipItems) {
+                            if (!tooltipItems.length) return null;
+                            const index = tooltipItems[0].dataIndex;
+                            // Find the dataset with rime fog data
+                            const cloudDataset = tooltipItems[0].chart.data.datasets.find(ds => ds.hasRimeFogByDay);
+                            if (cloudDataset && cloudDataset.hasRimeFogByDay[index]) {
+                                const fogHours = cloudDataset.fogHoursByDay ? cloudDataset.fogHoursByDay[index] : 0;
+                                const snowTiming = cloudDataset.rimeFogVsSnowByDay ? cloudDataset.rimeFogVsSnowByDay[index] : null;
+                                const windTiming = cloudDataset.rimeFogVsWindByDay ? cloudDataset.rimeFogVsWindByDay[index] : null;
+
+                                // Build timing details
+                                const timingParts = [];
+                                if (snowTiming === 'before') {
+                                    timingParts.push('before snow');
+                                } else if (snowTiming === 'after') {
+                                    timingParts.push('after snow');
+                                } else if (snowTiming === 'during') {
+                                    timingParts.push('during snow');
+                                }
+                                if (windTiming === 'before') {
+                                    timingParts.push('before winds');
+                                } else if (windTiming === 'after') {
+                                    timingParts.push('after winds');
+                                } else if (windTiming === 'during') {
+                                    timingParts.push('during winds');
+                                }
+
+                                const timingText = timingParts.length > 0 ? ` - ${timingParts.join(', ')}` : '';
+                                return `🧊 Rime fog (${fogHours}h${timingText})`;
+                            }
+                            return null;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(51, 65, 85, 0.5)',
+                    },
+                    ticks: {
+                        color: 'rgb(203, 213, 225)',
+                        font: { size: 10 }
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: '°C',
+                        color: 'rgb(239, 68, 68)',
+                        font: { size: 11, weight: 'bold' }
+                    },
+                    grid: {
+                        color: 'rgba(51, 65, 85, 0.3)',
+                    },
+                    ticks: {
+                        color: 'rgb(239, 68, 68)',
+                        font: { size: 10 }
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        color: 'rgb(14, 165, 233)',
+                        font: { size: 10 }
+                    }
+                },
+                y2: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    min: 0,
+                    suggestedMax: 10,
+                    grid: { drawOnChartArea: false },
+                },
+                y3: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    min: 0,
+                    max: 100,
+                    grid: { drawOnChartArea: false },
+                }
+            }
+        }
+    });
+
+    chartInstances[canvasId] = newChart;
+    return newChart;
+}
+
 // Create location card
 async function createLocationCard(location, forecastDate, useLocalPath = false) {
     const card = document.createElement('div');
@@ -1473,7 +2197,7 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
     const cardDateSelectorHtml = createCardDateSelector(forecastDate, cardId);
 
     // Temperature header placeholder - will be populated when advice is generated
-    const tempHeader = `<div class="temp-header"><h3>Loading temperature...</h3><span class="snow-accumulation" id="snow-${baseFilename}"></span></div>`;
+    const tempHeader = `<div class="temp-header"><h3>Loading temperature...</h3><div class="weather-badges"><span class="snow-accumulation" id="snow-${baseFilename}"></span><span class="fog-warning" id="fog-${baseFilename}"></span></div></div>`;
 
     card.innerHTML = `
         <div class="card-header">
@@ -1493,6 +2217,18 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 </div>
                 <div class="chart-container">
                     <canvas id="${canvasId}"></canvas>
+                </div>
+            </div>
+            <div class="chart-section cloud-chart-section">
+                <div class="chart-header" data-i18n="cloudCover">${translations[currentLanguage].cloudCover}</div>
+                <div class="chart-container chart-container-small">
+                    <canvas id="${canvasId}-clouds"></canvas>
+                </div>
+            </div>
+            <div class="chart-section history-chart-section">
+                <div class="chart-header" data-i18n="weekHistory">${translations[currentLanguage].weekHistory || '7-Day History'}</div>
+                <div class="chart-container chart-container-medium">
+                    <canvas id="${canvasId}-history"></canvas>
                 </div>
             </div>
             ${windAnalysisHtml}
@@ -1547,6 +2283,27 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 console.log(`Loaded hourly data for ${location.name}, ${hourlyData.length} data points`);
                 createWeatherChart(canvasId, hourlyData, fetchedAt);
                 initChartToggles(canvasId);
+                createCloudChart(`${canvasId}-clouds`, hourlyData);
+
+                // Load and create 7-day history chart
+                const historyFilename = `${baseFilename}_7day_history.json`;
+                try {
+                    let historyResponse;
+                    if (useLocalPath) {
+                        historyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${historyFilename}`);
+                    } else {
+                        historyResponse = await fetch(`./${historyFilename}`);
+                        if (!historyResponse.ok) {
+                            historyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${historyFilename}`);
+                        }
+                    }
+                    if (historyResponse.ok) {
+                        const historyData = await historyResponse.json();
+                        createHistoryChart(`${canvasId}-history`, historyData);
+                    }
+                } catch (historyError) {
+                    console.warn(`Could not load history for ${location.name}:`, historyError);
+                }
 
                 // Store hourly data in card for lazy advice generation (store normalized data array)
                 card.dataset.hourlyData = JSON.stringify(hourlyData);
@@ -1567,6 +2324,16 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                     const snowFormatted = formatSnowAmount(totalSnowCm);
                     snowEl.innerHTML = snowFormatted
                         ? `<span class="snow-badge">❄ ${snowFormatted}cm snow</span>`
+                        : '';
+                }
+
+                // Update fog warning in header
+                const fogInfo = calculateFogInfo(hourlyData);
+                const fogEl = document.getElementById(`fog-${baseFilename}`);
+                if (fogEl) {
+                    const fogWarning = formatFogWarning(fogInfo);
+                    fogEl.innerHTML = fogWarning
+                        ? `<span class="fog-badge">${fogInfo.hasRimeFog ? '🧊' : '🌫️'} ${fogWarning}</span>`
                         : '';
                 }
 

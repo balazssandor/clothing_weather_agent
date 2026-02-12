@@ -875,6 +875,33 @@ body {
     border: 1px solid var(--border);
 }
 
+/* Smaller chart container for cloud cover */
+.chart-container-small {
+    height: 200px;
+    padding: 15px;
+}
+
+/* Medium chart container for history */
+.chart-container-medium {
+    height: 320px;
+    padding: 15px;
+}
+
+/* Cloud chart section styling */
+.cloud-chart-section {
+    margin-top: 16px;
+}
+
+/* History chart section styling */
+.history-chart-section {
+    margin-top: 16px;
+}
+
+.cloud-chart-section .chart-header {
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
 /* Advice Sections - Collapsible horizontal scrolling cards */
 .advice-sections-container {
     margin-top: 16px;
@@ -1177,7 +1204,7 @@ body {
 }
 
 .snow-accumulation {
-    margin-left: 12px;
+    display: inline;
 }
 
 .snow-badge {
@@ -1195,6 +1222,41 @@ body {
 @keyframes snowPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.85; }
+}
+
+/* Weather badges container (snow, fog, etc.) */
+.weather-badges {
+    display: inline-flex;
+    gap: 8px;
+    margin-left: 12px;
+    flex-wrap: wrap;
+}
+
+.fog-warning {
+    display: inline;
+}
+
+.fog-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    color: #1f2937;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    animation: fogPulse 3s ease-in-out infinite;
+}
+
+/* Rime fog (freezing fog) - more dangerous, different color */
+.fog-badge.rime-fog {
+    background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
+    color: #1e3a5f;
+}
+
+@keyframes fogPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 .chart-loading {
@@ -1471,6 +1533,20 @@ body {
         max-height: 350px;
     }
 
+    .chart-container-small {
+        height: auto;
+        aspect-ratio: 16 / 7;
+        min-height: 160px;
+        max-height: 200px;
+    }
+
+    .chart-container-medium {
+        height: auto;
+        aspect-ratio: 16 / 9;
+        min-height: 200px;
+        max-height: 280px;
+    }
+
     .advice-section {
         min-width: 280px;
         max-width: 300px;
@@ -1505,6 +1581,19 @@ body {
         padding: 12px;
         aspect-ratio: 4 / 3;
         min-height: 200px;
+    }
+
+    .chart-container-small {
+        aspect-ratio: 16 / 9;
+        min-height: 150px;
+        height: auto;
+    }
+
+    .chart-container-medium {
+        aspect-ratio: 16 / 10;
+        min-height: 200px;
+        max-height: 260px;
+        height: auto;
     }
 }
 

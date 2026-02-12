@@ -1,0 +1,162 @@
+[
+  {
+    "mountain_range": "Muntii Postavarul",
+    "name": "varful Postavaru",
+    "latitude": 45.569,
+    "longitude": 25.568,
+    "elevation": 1799,
+    "zone": "below 1800m"
+  },
+  {
+    "mountain_range": "Muntii Fagaras",
+    "name": "Balea Lac",
+    "latitude": 45.604,
+    "longitude": 24.617,
+    "elevation": 2036,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Fagaras",
+    "name": "Valea Doamnei, sub lacul Doamnei",
+    "latitude": 45.615,
+    "longitude": 24.599,
+    "elevation": 1650,
+    "zone": "below 1800m"
+  },
+  {
+    "mountain_range": "Muntii Calimani",
+    "name": "sub varful Negoiul Unguresc",
+    "latitude": 47.112,
+    "longitude": 25.201,
+    "elevation": 1883,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Calimani",
+    "name": "sub varful Tihu",
+    "latitude": 47.091,
+    "longitude": 25.145,
+    "elevation": 1517,
+    "zone": "below 1800m"
+  },
+  {
+    "mountain_range": "Muntii Bucegi",
+    "name": "intre varful Caraiman si telescaun",
+    "latitude": 45.416,
+    "longitude": 25.507,
+    "elevation": 1680,
+    "zone": "below 1800m"
+  },
+  {
+    "mountain_range": "Muntii Bucegi",
+    "name": "sub varful Omu",
+    "latitude": 45.443,
+    "longitude": 25.457,
+    "elevation": 2397,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Rodnei",
+    "name": "sub varful Musceta (vest)",
+    "latitude": 47.581,
+    "longitude": 24.795,
+    "elevation": 1638,
+    "zone": "below 1800m"
+  },
+  {
+    "mountain_range": "Muntii Rodnei",
+    "name": "sub varful Gargalau",
+    "latitude": 47.565,
+    "longitude": 24.812,
+    "elevation": 2109,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Apuseni",
+    "name": "Cabana Vladeasa",
+    "latitude": 46.779,
+    "longitude": 22.813,
+    "elevation": 1385,
+    "zone": "below 1800m"
+  },
+  {
+    "mountain_range": "Muntii Apuseni",
+    "name": "sub varful Vladeasa",
+    "latitude": 46.759,
+    "longitude": 22.796,
+    "elevation": 1813,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Retezat-Godeanu",
+    "name": "Muntele Mic",
+    "latitude": 45.374,
+    "longitude": 22.474,
+    "elevation": 1807,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Retezat",
+    "name": "Lacul Bucura",
+    "latitude": 45.361,
+    "longitude": 22.873,
+    "elevation": 2040,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Ciucas",
+    "name": "varful Ciucas",
+    "latitude": 45.522,
+    "longitude": 25.927,
+    "elevation": 1954,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Ciucas",
+    "name": "sub varful Bratocea",
+    "latitude": 45.511,
+    "longitude": 25.918,
+    "elevation": 1754,
+    "zone": "below 1800m"
+  },
+  {
+    "mountain_range": "Muntii Fagaras",
+    "name": "varful Suru",
+    "latitude": 45.588,
+    "longitude": 24.438,
+    "elevation": 2281,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Sureanu",
+    "name": "varful Sureanu",
+    "latitude": 45.579,
+    "longitude": 23.495,
+    "elevation": 2059,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Rodnei",
+    "name": "varful Ineu",
+    "latitude": 47.526,
+    "longitude": 24.884,
+    "elevation": 2279,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Calimani",
+    "name": "varful Bistricioru",
+    "latitude": 47.134,
+    "longitude": 25.058,
+    "elevation": 1990,
+    "zone": "above 1800m"
+  },
+  {
+    "mountain_range": "Muntii Gurghiu",
+    "name": "varful Saca Mare",
+    "latitude": 46.684,
+    "longitude": 25.228,
+    "elevation": 1777,
+    "zone": "below 1800m"
+  }
+]
