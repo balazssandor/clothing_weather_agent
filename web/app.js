@@ -519,13 +519,13 @@ async function updateCardDate(cardId, newDate) {
                     : '';
             }
 
-            // Update fog warning in header
+            // Update fog warning in header (simple indicator with total hours, details in cloud chart)
             const fogInfo = calculateFogInfo(hourlyData);
             const fogEl = card.querySelector('.fog-warning');
             if (fogEl) {
-                const fogWarning = formatFogWarning(fogInfo);
-                fogEl.innerHTML = fogWarning
-                    ? `<span class="fog-badge">${fogInfo.hasRimeFog ? '🧊' : '🌫️'} ${fogWarning}</span>`
+                const fogHoursCount = fogInfo.fogHours.length;
+                fogEl.innerHTML = fogInfo.hasFog
+                    ? `<span class="fog-badge">${fogInfo.hasRimeFog ? '🧊 ' + translations[currentLanguage].rimeFog : '🌫️ ' + translations[currentLanguage].fog} ${fogHoursCount}h</span>`
                     : '';
             }
 
@@ -1640,6 +1640,16 @@ function createCloudChart(canvasId, hourlyData) {
     const cloudMid = filteredData.map(d => d.cloud_cover_mid ?? null);
     const cloudHigh = filteredData.map(d => d.cloud_cover_high ?? null);
 
+    // Extract fog data (weather codes 45 = fog, 48 = rime fog)
+    const fogData = filteredData.map(d => {
+        const code = d.weather_code;
+        if (code === 45) return 100; // Regular fog - show at 100%
+        if (code === 48) return 100; // Rime fog - show at 100%
+        return null;
+    });
+    const isRimeFogByHour = filteredData.map(d => d.weather_code === 48);
+    const hasFog = fogData.some(v => v !== null);
+
     // Check if we have any cloud data
     const hasCloudData = cloudTotal.some(v => v !== null);
     if (!hasCloudData) {
@@ -1695,7 +1705,24 @@ function createCloudChart(canvasId, hourlyData) {
                     borderWidth: 2,
                     pointRadius: 2,
                     pointHoverRadius: 4,
-                }
+                },
+                // Fog dataset - shown as bars at bottom
+                ...(hasFog ? [{
+                    label: 'Fog',
+                    data: fogData,
+                    type: 'bar',
+                    backgroundColor: fogData.map((v, i) =>
+                        isRimeFogByHour[i] ? 'rgba(100, 200, 255, 0.4)' : 'rgba(156, 163, 175, 0.3)'
+                    ),
+                    borderColor: fogData.map((v, i) =>
+                        isRimeFogByHour[i] ? 'rgba(100, 200, 255, 0.8)' : 'rgba(156, 163, 175, 0.6)'
+                    ),
+                    borderWidth: 1,
+                    barPercentage: 0.9,
+                    categoryPercentage: 0.9,
+                    order: 1,
+                    isRimeFogByHour: isRimeFogByHour,
+                }] : [])
             ]
         },
         options: {
@@ -1729,7 +1756,15 @@ function createCloudChart(canvasId, hourlyData) {
                     displayColors: true,
                     callbacks: {
                         label: function(context) {
-                            let label = context.dataset.label || '';
+                            const dataset = context.dataset;
+                            let label = dataset.label || '';
+
+                            // Special handling for fog dataset
+                            if (label === 'Fog' && context.parsed.y !== null) {
+                                const isRimeFog = dataset.isRimeFogByHour && dataset.isRimeFogByHour[context.dataIndex];
+                                return isRimeFog ? '🧊 Rime Fog' : '🌫️ Fog';
+                            }
+
                             if (label) {
                                 label += ': ';
                             }
@@ -2302,13 +2337,13 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                         : '';
                 }
 
-                // Update fog warning in header
+                // Update fog warning in header (simple indicator with total hours, details in cloud chart)
                 const fogInfo = calculateFogInfo(hourlyData);
                 const fogEl = document.getElementById(`fog-${baseFilename}`);
                 if (fogEl) {
-                    const fogWarning = formatFogWarning(fogInfo);
-                    fogEl.innerHTML = fogWarning
-                        ? `<span class="fog-badge">${fogInfo.hasRimeFog ? '🧊' : '🌫️'} ${fogWarning}</span>`
+                    const fogHoursCount = fogInfo.fogHours.length;
+                    fogEl.innerHTML = fogInfo.hasFog
+                        ? `<span class="fog-badge">${fogInfo.hasRimeFog ? '🧊 ' + translations[currentLanguage].rimeFog : '🌫️ ' + translations[currentLanguage].fog} ${fogHoursCount}h</span>`
                         : '';
                 }
 
