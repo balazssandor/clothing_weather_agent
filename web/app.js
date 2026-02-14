@@ -407,6 +407,12 @@ function getDateOffset(dayOffset) {
     return date.toISOString().split('T')[0];
 }
 
+// Add cache-busting parameter to URL to bypass browser/CDN caching
+function cacheBust(url) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}_t=${Date.now()}`;
+}
+
 // Global variable to store selected date
 let selectedForecastDate = null;
 
@@ -462,8 +468,8 @@ async function updateCardDate(cardId, newDate) {
     const canvasId = `chart-${baseFilename}`;
 
     try {
-        // Load wind analysis
-        const windResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${windAnalysisFilename}`);
+        // Load wind analysis (cache-bust to get fresh data)
+        const windResponse = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${newDate}/${windAnalysisFilename}`));
         if (windResponse.ok) {
             const windData = await windResponse.json();
             const windSection = card.querySelector('.wind-analysis-section');
@@ -472,8 +478,8 @@ async function updateCardDate(cardId, newDate) {
             }
         }
 
-        // Load hourly data and recreate chart
-        const hourlyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${hourlyDataFilename}`);
+        // Load hourly data and recreate chart (cache-bust to get fresh data)
+        const hourlyResponse = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${newDate}/${hourlyDataFilename}`));
         if (hourlyResponse.ok) {
             const hourlyDataRaw = await hourlyResponse.json();
             const normalized = normalizeHourlyData(hourlyDataRaw);
@@ -539,7 +545,7 @@ async function updateCardDate(cardId, newDate) {
             // Load and update 7-day history chart
             const historyFilename = `${baseFilename}_7day_history.json`;
             try {
-                const historyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${newDate}/${historyFilename}`);
+                const historyResponse = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${newDate}/${historyFilename}`));
                 if (historyResponse.ok) {
                     const historyData = await historyResponse.json();
                     createHistoryChart(`${canvasId}-history`, historyData);
@@ -2182,16 +2188,16 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
     // Generate unique canvas ID
     const canvasId = `chart-${baseFilename}`;
 
-    // Load wind analysis data
+    // Load wind analysis data (cache-bust to get fresh data)
     let windAnalysisHtml = '';
     try {
         let windResponse;
         if (useLocalPath) {
-            windResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${windAnalysisFilename}`);
+            windResponse = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${windAnalysisFilename}`));
         } else {
-            windResponse = await fetch(`./${windAnalysisFilename}`);
+            windResponse = await fetch(cacheBust(`./${windAnalysisFilename}`));
             if (!windResponse.ok) {
-                windResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${windAnalysisFilename}`);
+                windResponse = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${windAnalysisFilename}`));
             }
         }
 
@@ -2270,17 +2276,17 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
         try {
             let response;
 
-            // Use local path with date directory or S3
+            // Use local path with date directory or S3 (cache-bust to get fresh data)
             if (useLocalPath) {
-                response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${hourlyDataFilename}`);
+                response = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${hourlyDataFilename}`));
             } else {
                 // Try S3 first (only works for current/latest forecast)
-                response = await fetch(`./${hourlyDataFilename}`);
+                response = await fetch(cacheBust(`./${hourlyDataFilename}`));
 
                 // If S3 fails, try local path
                 if (!response.ok) {
                     console.log(`S3 not found, trying local: ../tomorrow_mountain_forecast_data/date=${forecastDate}/${hourlyDataFilename}`);
-                    response = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${hourlyDataFilename}`);
+                    response = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${hourlyDataFilename}`));
                 }
             }
 
@@ -2300,11 +2306,11 @@ async function createLocationCard(location, forecastDate, useLocalPath = false) 
                 try {
                     let historyResponse;
                     if (useLocalPath) {
-                        historyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${historyFilename}`);
+                        historyResponse = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${historyFilename}`));
                     } else {
-                        historyResponse = await fetch(`./${historyFilename}`);
+                        historyResponse = await fetch(cacheBust(`./${historyFilename}`));
                         if (!historyResponse.ok) {
-                            historyResponse = await fetch(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${historyFilename}`);
+                            historyResponse = await fetch(cacheBust(`../tomorrow_mountain_forecast_data/date=${forecastDate}/${historyFilename}`));
                         }
                     }
                     if (historyResponse.ok) {
@@ -2389,8 +2395,8 @@ async function loadLocations(selectedDate = null) {
     if (!selectedDate) {
         // No date selected, try to load the latest available (S3 or local)
         try {
-            // Try S3 first
-            let metadataResponse = await fetch('./forecast_metadata.json');
+            // Try S3 first (cache-bust to get fresh metadata)
+            let metadataResponse = await fetch(cacheBust('./forecast_metadata.json'));
 
             if (metadataResponse.ok) {
                 const metadata = await metadataResponse.json();

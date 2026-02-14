@@ -233,28 +233,112 @@ def generate_7day_history_from_s3(
             precips = [h.get('precipitation', 0) for h in hourly_data]
             wind_speeds = [h.get('wind_speed', 0) for h in hourly_data if h.get('wind_speed') is not None]
             wind_gusts = [h.get('wind_gusts', 0) for h in hourly_data if h.get('wind_gusts') is not None]
-            cloud_covers = [h.get('cloud_cover', 0) for h in hourly_data if h.get('cloud_cover') is not None]
-            cloud_lows = [h.get('cloud_cover_low', 0) for h in hourly_data if h.get('cloud_cover_low') is not None]
-            cloud_mids = [h.get('cloud_cover_mid', 0) for h in hourly_data if h.get('cloud_cover_mid') is not None]
-            cloud_highs = [h.get('cloud_cover_high', 0) for h in hourly_data if h.get('cloud_cover_high') is not None]
             weather_codes = [h.get('weather_code') for h in hourly_data if h.get('weather_code') is not None]
 
-            # Count fog hours
-            fog_hours = sum(1 for code in weather_codes if code in FOG_CODES)
-            has_rime_fog = 48 in weather_codes
+            # Calculate cloud coverage with daytime weighting
+            # Daytime hours (7-18) get full weight, nighttime gets reduced weight
+            def get_hour_weight(hour):
+                if 7 <= hour <= 18:
+                    return 1.0  # Full weight for daytime
+                return 0.2  # Reduced weight for nighttime
 
-            # Detect snow: either snow weather codes OR cold temp with precipitation
-            snow_hours = 0
-            total_snow_precip = 0.0
+            cloud_weighted_sum = 0.0
+            cloud_low_weighted_sum = 0.0
+            cloud_mid_weighted_sum = 0.0
+            cloud_high_weighted_sum = 0.0
+            total_cloud_weight = 0.0
+
             for h in hourly_data:
+                hour = h.get('hour', 12)
+                weight = get_hour_weight(hour)
+
+                if h.get('cloud_cover') is not None:
+                    cloud_weighted_sum += h['cloud_cover'] * weight
+                    total_cloud_weight += weight
+                if h.get('cloud_cover_low') is not None:
+                    cloud_low_weighted_sum += h['cloud_cover_low'] * weight
+                if h.get('cloud_cover_mid') is not None:
+                    cloud_mid_weighted_sum += h['cloud_cover_mid'] * weight
+                if h.get('cloud_cover_high') is not None:
+                    cloud_high_weighted_sum += h['cloud_cover_high'] * weight
+
+            # Calculate weighted averages
+            cloud_avg = round(cloud_weighted_sum / total_cloud_weight, 0) if total_cloud_weight > 0 else None
+            cloud_low_avg = round(cloud_low_weighted_sum / total_cloud_weight, 0) if total_cloud_weight > 0 else None
+            cloud_mid_avg = round(cloud_mid_weighted_sum / total_cloud_weight, 0) if total_cloud_weight > 0 else None
+            cloud_high_avg = round(cloud_high_weighted_sum / total_cloud_weight, 0) if total_cloud_weight > 0 else None
+
+            # Detect snow, rime fog, and major winds with timing relationships
+            snow_hours_list = []
+            rime_fog_hours_list = []
+            major_wind_hours_list = []
+            total_snow_precip = 0.0
+            fog_hours = 0
+
+            # Major wind thresholds for snow transport
+            MAJOR_WIND_SPEED = 30  # km/h
+            MAJOR_GUST_SPEED = 50  # km/h
+
+            for h in hourly_data:
+                hour = h.get('hour', 0)
                 code = h.get('weather_code')
                 temp = h.get('temperature', 10)
                 precip = h.get('precipitation', 0)
+                h_wind_speed = h.get('wind_speed', 0)
+                h_wind_gusts = h.get('wind_gusts', 0)
+
+                # Track fog
+                if code in FOG_CODES:
+                    fog_hours += 1
+                if code == 48:  # Rime fog specifically
+                    rime_fog_hours_list.append(hour)
+
+                # Track snow
                 is_snow = code in SNOW_CODES or (temp < 2 and precip > 0)
                 if is_snow:
-                    snow_hours += 1
+                    snow_hours_list.append(hour)
                     total_snow_precip += precip
-            has_snow = snow_hours > 0
+
+                # Track major winds (significant for snow transport)
+                if h_wind_speed >= MAJOR_WIND_SPEED or h_wind_gusts >= MAJOR_GUST_SPEED:
+                    major_wind_hours_list.append(hour)
+
+            has_rime_fog = len(rime_fog_hours_list) > 0
+            has_snow = len(snow_hours_list) > 0
+            has_major_wind = len(major_wind_hours_list) > 0
+            snow_hours = len(snow_hours_list)
+
+            # Determine rime fog timing relative to snow
+            # This is important for avalanche assessment:
+            # - Before snow: ice layer buried under new snow (weak layer)
+            # - After snow: surface hoar on new snow (future weak layer)
+            rime_fog_vs_snow = None
+            if has_rime_fog and has_snow:
+                avg_rime_hour = sum(rime_fog_hours_list) / len(rime_fog_hours_list)
+                avg_snow_hour = sum(snow_hours_list) / len(snow_hours_list)
+                if avg_rime_hour < avg_snow_hour - 2:
+                    rime_fog_vs_snow = "before"
+                elif avg_rime_hour > avg_snow_hour + 2:
+                    rime_fog_vs_snow = "after"
+                else:
+                    rime_fog_vs_snow = "during"
+            elif has_rime_fog:
+                rime_fog_vs_snow = "no_snow"
+
+            # Determine rime fog timing relative to major winds
+            # If rime before winds: wind-loaded snow on lee slopes sits on rime (weak layer)
+            rime_fog_vs_wind = None
+            if has_rime_fog and has_major_wind:
+                avg_rime_hour = sum(rime_fog_hours_list) / len(rime_fog_hours_list)
+                avg_wind_hour = sum(major_wind_hours_list) / len(major_wind_hours_list)
+                if avg_rime_hour < avg_wind_hour - 2:
+                    rime_fog_vs_wind = "before"
+                elif avg_rime_hour > avg_wind_hour + 2:
+                    rime_fog_vs_wind = "after"
+                else:
+                    rime_fog_vs_wind = "during"
+            elif has_rime_fog:
+                rime_fog_vs_wind = "no_wind"
 
             # Calculate vector-averaged wind direction weighted by wind speed
             # This gives the "net" wind direction considering that stronger winds
@@ -302,12 +386,14 @@ def generate_7day_history_from_s3(
                 "wind_max": round(max(wind_speeds), 1) if wind_speeds else 0,
                 "gust_max": round(max(wind_gusts), 1) if wind_gusts else 0,
                 "wind_direction": dominant_wind_direction,  # Vector-averaged direction
-                "cloud_avg": round(sum(cloud_covers) / len(cloud_covers), 0) if cloud_covers else None,
-                "cloud_low_avg": round(sum(cloud_lows) / len(cloud_lows), 0) if cloud_lows else None,
-                "cloud_mid_avg": round(sum(cloud_mids) / len(cloud_mids), 0) if cloud_mids else None,
-                "cloud_high_avg": round(sum(cloud_highs) / len(cloud_highs), 0) if cloud_highs else None,
+                "cloud_avg": cloud_avg,  # Daytime-weighted average
+                "cloud_low_avg": cloud_low_avg,
+                "cloud_mid_avg": cloud_mid_avg,
+                "cloud_high_avg": cloud_high_avg,
                 "fog_hours": fog_hours,
                 "has_rime_fog": has_rime_fog,
+                "rime_fog_vs_snow": rime_fog_vs_snow,  # "before", "after", "during", "no_snow", or None
+                "rime_fog_vs_wind": rime_fog_vs_wind,  # "before", "after", "during", "no_wind", or None
                 "has_snow": has_snow,
                 "snow_hours": snow_hours,
                 "snow_precip_mm": round(total_snow_precip, 1),
@@ -587,7 +673,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Generate forecasts for 3 days (tomorrow, +2, +3)
         all_forecast_results = []
-        for day_offset in range(1, 4):
+        for day_offset in range(1, 6):  # 1, 2, 3, 4, 5
             forecast_date = date.today() + timedelta(days=day_offset)
             print(f"\n{'='*60}")
             print(f"Generating forecast for: {forecast_date.isoformat()}")

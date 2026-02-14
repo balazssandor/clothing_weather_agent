@@ -5,11 +5,87 @@ import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
+
+import boto3
+from botocore.exceptions import ClientError
+
 from weather import (_get_tomorrow_weather_report_internal, HourlyForecastPoint, TomorrowWindowSummary,
                      wind_chill_with_gusts)
-
-
 from s3_uploader import upload_directory_to_s3
+from s3_config import S3_BUCKET_NAME, AWS_REGION
+
+
+def sync_last_7_days_from_s3(days_back: int = 7) -> None:
+    """
+    Sync the last N days of data from S3 to local storage.
+    This ensures local runs have the same historical data as Lambda updates.
+
+    Args:
+        days_back: Number of days to sync (default: 7)
+    """
+    print(f"\n📥 Syncing last {days_back} days from S3...")
+
+    s3_client = boto3.client('s3', region_name=AWS_REGION)
+    local_base_dir = "tomorrow_mountain_forecast_data"
+    s3_prefix = "tomorrow_mountain_forecast_data"
+
+    # Calculate which dates to sync
+    dates_to_sync = []
+    for day_offset in range(days_back):
+        sync_date = date.today() - timedelta(days=day_offset)
+        dates_to_sync.append(sync_date)
+
+    files_synced = 0
+    files_skipped = 0
+
+    for sync_date in dates_to_sync:
+        date_prefix = f"{s3_prefix}/date={sync_date.isoformat()}/"
+        local_date_dir = os.path.join(local_base_dir, f"date={sync_date.isoformat()}")
+
+        try:
+            # List objects in this date folder
+            paginator = s3_client.get_paginator('list_objects_v2')
+
+            for page in paginator.paginate(Bucket=S3_BUCKET_NAME, Prefix=date_prefix):
+                if 'Contents' not in page:
+                    continue
+
+                for obj in page['Contents']:
+                    s3_key = obj['Key']
+                    filename = os.path.basename(s3_key)
+
+                    if not filename:  # Skip directory markers
+                        continue
+
+                    local_path = os.path.join(local_date_dir, filename)
+
+                    # Check if local file exists and is up to date
+                    should_download = True
+                    if os.path.exists(local_path):
+                        local_mtime = datetime.fromtimestamp(os.path.getmtime(local_path), tz=timezone.utc)
+                        s3_mtime = obj['LastModified']
+
+                        # Skip if local file is newer or same age
+                        if local_mtime >= s3_mtime:
+                            should_download = False
+                            files_skipped += 1
+
+                    if should_download:
+                        # Ensure local directory exists
+                        os.makedirs(local_date_dir, exist_ok=True)
+
+                        # Download file
+                        s3_client.download_file(S3_BUCKET_NAME, s3_key, local_path)
+                        files_synced += 1
+
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                # No data for this date
+                pass
+            else:
+                print(f"  ⚠️ Error syncing {sync_date.isoformat()}: {e}")
+
+    print(f"✓ S3 sync complete: {files_synced} files downloaded, {files_skipped} already up to date")
 
 
 def degrees_to_cardinal(degrees: float) -> str:
@@ -551,10 +627,19 @@ def main():
     parser = argparse.ArgumentParser(description='Generate weather forecasts for mountain locations')
     parser.add_argument('--use-cache', action='store_true', default=False,
                         help='Use cached data if available (default: always fetch fresh)')
+    parser.add_argument('--no-sync', action='store_true', default=False,
+                        help='Skip syncing historical data from S3 before processing')
     args = parser.parse_args()
 
     use_cache = args.use_cache
-    print("Generating weather forecasts for mountain locations...")
+
+    # Sync last 7 days from S3 to ensure we have latest historical data
+    if not args.no_sync:
+        sync_last_7_days_from_s3(days_back=7)
+    else:
+        print("⏭️  Skipping S3 sync (--no-sync flag)")
+
+    print("\nGenerating weather forecasts for mountain locations...")
     if not use_cache:
         print("🔄 Cache disabled - fetching fresh data for all locations")
 
