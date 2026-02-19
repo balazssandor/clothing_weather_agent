@@ -21,7 +21,34 @@ const translations = {
         cloudCover: "Cloud Cover",
         fog: "Fog",
         rimeFog: "Rime fog",
-        weekHistory: "7-Day History"
+        weekHistory: "7-Day History",
+        avalancheBulletin: "Official Avalanche Bulletin",
+        avalancheRisk: "Avalanche Risk",
+        validUntil: "Valid until",
+        expired: "EXPIRED",
+        snowDepth: "Snow depth",
+        freshSnow: "Fresh snow",
+        expectedSnow: "Expected",
+        hazards: "Hazards",
+        above1800m: "Above 1800m",
+        below1800m: "Below 1800m",
+        source: "Source",
+        riskLevels: {
+            1: "Low",
+            2: "Moderate",
+            3: "Considerable",
+            4: "High",
+            5: "Very High"
+        },
+        hazardTypes: {
+            fresh_snow: "Fresh snow",
+            wind_slabs: "Wind slabs",
+            cornices: "Cornices",
+            deep_instability: "Deep instability",
+            overloading: "Overloading",
+            ice_crusts: "Ice crusts",
+            wet_snow: "Wet snow"
+        }
     },
     ro: {
         title: "Vreme Muntii Romaniei",
@@ -42,7 +69,34 @@ const translations = {
         cloudCover: "Acoperire Nori",
         fog: "Ceață",
         rimeFog: "Chiciură",
-        weekHistory: "Istoric 7 Zile"
+        weekHistory: "Istoric 7 Zile",
+        avalancheBulletin: "Buletin Oficial Avalanșe",
+        avalancheRisk: "Risc Avalanșă",
+        validUntil: "Valabil până la",
+        expired: "EXPIRAT",
+        snowDepth: "Grosime zăpadă",
+        freshSnow: "Zăpadă proaspătă",
+        expectedSnow: "Așteptat",
+        hazards: "Pericole",
+        above1800m: "Peste 1800m",
+        below1800m: "Sub 1800m",
+        source: "Sursă",
+        riskLevels: {
+            1: "Redus",
+            2: "Moderat",
+            3: "Însemnat",
+            4: "Mare",
+            5: "Foarte Mare"
+        },
+        hazardTypes: {
+            fresh_snow: "Zăpadă proaspătă",
+            wind_slabs: "Plăci de vânt",
+            cornices: "Cornișe",
+            deep_instability: "Instabilitate profundă",
+            overloading: "Supraîncărcare",
+            ice_crusts: "Cruste de gheață",
+            wet_snow: "Zăpadă umedă"
+        }
     },
     hu: {
         title: "Roman Hegyi Idojaras",
@@ -2444,6 +2498,11 @@ async function loadLocations(selectedDate = null) {
         const locations = await response.json();
         console.log(`Loaded ${locations.length} mountain locations`);
 
+        // Fetch avalanche bulletin first (needed for sorting)
+        if (!avalancheBulletinData) {
+            await fetchAvalancheBulletin();
+        }
+
         // Group by mountain range
         const groupedLocations = {};
         locations.forEach(loc => {
@@ -2453,10 +2512,18 @@ async function loadLocations(selectedDate = null) {
             groupedLocations[loc.mountain_range].push(loc);
         });
 
+        // Sort mountain ranges by avalanche risk level (descending)
+        const sortedRangeNames = Object.keys(groupedLocations).sort((a, b) => {
+            const riskA = getAvalancheRiskLevel(a);
+            const riskB = getAvalancheRiskLevel(b);
+            return riskB - riskA; // Descending order (highest risk first)
+        });
+
         container.innerHTML = '';
 
-        // Create sections
-        for (const [rangeName, rangeLocations] of Object.entries(groupedLocations)) {
+        // Create sections in sorted order
+        for (const rangeName of sortedRangeNames) {
+            const rangeLocations = groupedLocations[rangeName];
             const section = document.createElement('div');
             section.className = 'mountain-range-section';
             section.id = `range-${rangeName.replace(/\s+/g, '-').toLowerCase()}`;
@@ -2500,19 +2567,22 @@ async function loadLocations(selectedDate = null) {
         // Setup search functionality
         setupSearch();
 
-        // Create range filter buttons
-        createRangeFilters(Object.keys(groupedLocations));
+        // Create range filter buttons (sorted by avalanche risk)
+        createRangeFilters(sortedRangeNames);
 
-        // Create bottom navigation
-        createBottomNav(Object.keys(groupedLocations));
+        // Create bottom navigation (sorted by avalanche risk)
+        createBottomNav(sortedRangeNames);
 
         // Track successful page load with metadata
         trackEvent('page_loaded', {
             forecast_date: forecastDate,
             total_locations: locations.length,
-            mountain_ranges: Object.keys(groupedLocations).length,
-            ranges_list: Object.keys(groupedLocations).join(', ')
+            mountain_ranges: sortedRangeNames.length,
+            ranges_list: sortedRangeNames.join(', ')
         });
+
+        // Inject avalanche bulletin data into the page
+        injectAvalancheDataIntoPage();
 
         // Restore scroll position to previously viewed location
         if (locationToRestore) {
@@ -2671,7 +2741,7 @@ function applyFilters() {
 
     sections.forEach(section => {
         const rangeHeader = section.querySelector('.range-header h2');
-        const rangeName = rangeHeader.textContent.toLowerCase();
+        const rangeName = rangeHeader.textContent.toLowerCase().trim();
         const cards = section.querySelectorAll('.location-card');
         let visibleCardsInSection = 0;
 
@@ -3219,6 +3289,430 @@ if (visitCount > 1) {
     });
 }
 
+// ============================================
+// AVALANCHE BULLETIN
+// ============================================
+
+// Global variable to store avalanche bulletin data
+let avalancheBulletinData = null;
+
+// S3 path for avalanche bulletins
+const AVALANCHE_BULLETIN_S3_PREFIX = 'romania-official-avalanche-bulletin-parsed';
+
+/**
+ * Fetch the latest avalanche bulletin from S3 or local path
+ * Tries to find the most recent date folder
+ */
+async function fetchAvalancheBulletin() {
+    const today = new Date();
+
+    // Try to find bulletin from last 5 days (bulletins are refreshed every ~3 days)
+    for (let daysBack = 0; daysBack < 5; daysBack++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(checkDate.getDate() - daysBack);
+        const dateStr = checkDate.toISOString().split('T')[0];
+
+        // Try multiple paths: S3, local relative paths
+        const paths = [
+            // S3 path
+            `https://static-sites-outdoor-activities-clothing-romania.s3.us-east-1.amazonaws.com/${AVALANCHE_BULLETIN_S3_PREFIX}/date=${dateStr}/parsed_bulletin.json`,
+            // Local paths (relative to web/ directory)
+            `../${AVALANCHE_BULLETIN_S3_PREFIX}/date=${dateStr}/parsed_bulletin.json`,
+            `./${AVALANCHE_BULLETIN_S3_PREFIX}/date=${dateStr}/parsed_bulletin.json`,
+        ];
+
+        for (const path of paths) {
+            try {
+                const response = await fetch(cacheBust(path));
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`Loaded avalanche bulletin from: ${path}`);
+                    avalancheBulletinData = data;
+                    return data;
+                }
+            } catch (error) {
+                // Continue to next path
+            }
+        }
+    }
+
+    console.warn('No avalanche bulletin found in last 5 days');
+    return null;
+}
+
+/**
+ * Check if bulletin is still valid
+ */
+function isBulletinValid(bulletin) {
+    if (!bulletin?.bulletin?.valid_to) return false;
+    const validTo = new Date(bulletin.bulletin.valid_to);
+    return validTo > new Date();
+}
+
+/**
+ * Get avalanche risk color based on level (1-5 European scale)
+ */
+function getAvalancheRiskColor(level) {
+    const colors = {
+        1: '#4ade80', // green - Low
+        2: '#facc15', // yellow - Moderate
+        3: '#fb923c', // orange - Considerable
+        4: '#ef4444', // red - High
+        5: '#000000'  // black - Very High
+    };
+    return colors[level] || '#6b7280';
+}
+
+/**
+ * Get avalanche risk text color (for contrast)
+ */
+function getAvalancheRiskTextColor(level) {
+    return level === 5 ? '#ffffff' : '#000000';
+}
+
+/**
+ * Get avalanche risk level for a mountain range (for sorting)
+ * Returns 0 if no bulletin data available
+ */
+function getAvalancheRiskLevel(mountainRange) {
+    const rangeData = findBulletinRangeData(mountainRange);
+    return rangeData?.avalanche_risk?.level || 0;
+}
+
+/**
+ * Format hazard type for display
+ */
+function formatHazard(hazard, lang = currentLanguage) {
+    const hazardTypes = translations[lang]?.hazardTypes || translations.en.hazardTypes;
+    return hazardTypes[hazard] || hazard.replace(/_/g, ' ');
+}
+
+/**
+ * Create avalanche bulletin header HTML
+ */
+function createBulletinHeaderHtml(bulletin) {
+    if (!bulletin) return '';
+
+    const lang = currentLanguage;
+    const t = translations[lang] || translations.en;
+    const isValid = isBulletinValid(bulletin);
+
+    const dateOptions = {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+    const locale = lang === 'ro' ? 'ro-RO' : (lang === 'hu' ? 'hu-HU' : 'en-US');
+
+    const validFrom = new Date(bulletin.bulletin.valid_from);
+    const validTo = new Date(bulletin.bulletin.valid_to);
+    const validFromStr = validFrom.toLocaleDateString(locale, dateOptions);
+    const validToStr = validTo.toLocaleDateString(locale, dateOptions);
+
+    // Calculate time remaining
+    const now = new Date();
+    const hoursRemaining = Math.max(0, Math.round((validTo - now) / (1000 * 60 * 60)));
+    const timeRemainingText = isValid
+        ? (hoursRemaining > 24 ? `${Math.round(hoursRemaining / 24)}d` : `${hoursRemaining}h`)
+        : '';
+
+    return `
+        <div class="avalanche-bulletin-header ${isValid ? '' : 'expired'}">
+            <div class="bulletin-official">
+                <span class="official-badge">🏛️ OFFICIAL</span>
+                <span class="official-source">Meteo Romania - Serviciul Nivologic</span>
+            </div>
+            <div class="bulletin-title">
+                <span class="bulletin-icon">⚠️</span>
+                <h3>${t.avalancheBulletin}</h3>
+            </div>
+            <div class="bulletin-validity-details">
+                <div class="validity-period">
+                    <span class="validity-label">${lang === 'ro' ? 'Valabil' : 'Valid'}:</span>
+                    <span class="validity-dates">${validFromStr} → ${validToStr}</span>
+                </div>
+                <span class="bulletin-status ${isValid ? 'valid' : 'expired'}">
+                    ${isValid ? `✓ ${lang === 'ro' ? 'ACTIV' : 'ACTIVE'} (${timeRemainingText} ${lang === 'ro' ? 'rămase' : 'remaining'})` : `✗ ${t.expired}`}
+                </span>
+            </div>
+            <div class="bulletin-source">
+                <a href="https://www.meteoromania.ro/avertizari/avalanse/" target="_blank" rel="noopener">
+                    📋 ${lang === 'ro' ? 'Vezi buletinul complet pe' : 'View full bulletin on'} meteoromania.ro
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create avalanche risk badge HTML for a mountain range
+ */
+function createAvalancheRiskBadgeHtml(mountainRange) {
+    if (!avalancheBulletinData?.mountain_ranges) return '';
+
+    // Find matching mountain range in bulletin
+    const rangeData = findBulletinRangeData(mountainRange);
+    if (!rangeData) return '';
+
+    const lang = currentLanguage;
+    const t = translations[lang] || translations.en;
+    const level = rangeData.avalanche_risk.level;
+    const color = getAvalancheRiskColor(level);
+    const textColor = getAvalancheRiskTextColor(level);
+    const riskLabel = t.riskLevels[level] || rangeData.avalanche_risk.label;
+
+    return `
+        <div class="avalanche-risk-badge" style="background-color: ${color}; color: ${textColor};"
+             title="${t.avalancheRisk}: ${riskLabel}">
+            <span class="risk-level">${level}</span>
+            <span class="risk-label">${riskLabel}</span>
+        </div>
+    `;
+}
+
+/**
+ * Find bulletin data for a mountain range (fuzzy matching)
+ */
+function findBulletinRangeData(mountainRange) {
+    if (!avalancheBulletinData?.mountain_ranges) return null;
+
+    // Normalize the mountain range name for comparison
+    const normalize = (str) => str.toLowerCase()
+        .replace(/muntii\s*/gi, '')
+        .replace(/munții\s*/gi, '')
+        .replace(/-/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const normalizedInput = normalize(mountainRange);
+
+    // Try exact match first
+    for (const range of avalancheBulletinData.mountain_ranges) {
+        if (normalize(range.mountain_range) === normalizedInput) {
+            return range;
+        }
+    }
+
+    // Try partial match
+    for (const range of avalancheBulletinData.mountain_ranges) {
+        const normalizedRange = normalize(range.mountain_range);
+        if (normalizedRange.includes(normalizedInput) || normalizedInput.includes(normalizedRange)) {
+            return range;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Create detailed avalanche info HTML for mountain range section
+ */
+function createAvalancheDetailHtml(mountainRange) {
+    const rangeData = findBulletinRangeData(mountainRange);
+    if (!rangeData) return '';
+
+    const lang = currentLanguage;
+    const t = translations[lang] || translations.en;
+    const level = rangeData.avalanche_risk.level;
+    const color = getAvalancheRiskColor(level);
+
+    // Get zone data
+    const above1800 = rangeData.zones?.['above 1800m'];
+    const below1800 = rangeData.zones?.['below 1800m'];
+
+    // Get stations with snow depth
+    const stationsHtml = rangeData.stations?.length > 0
+        ? `<div class="snow-stations">
+            ${rangeData.stations.map(s => `<span class="station">${s.name}: ${s.snow_depth_cm}cm</span>`).join('')}
+           </div>`
+        : '';
+
+    // Create zone cards
+    const createZoneHtml = (zone, label) => {
+        if (!zone) return '';
+        const zoneLevel = zone.avalanche_risk;
+        const zoneColor = getAvalancheRiskColor(zoneLevel);
+        const zoneTextColor = getAvalancheRiskTextColor(zoneLevel);
+
+        const freshSnowText = zone.fresh_snow_cm
+            ? `${zone.fresh_snow_cm[0]}-${zone.fresh_snow_cm[1]}cm`
+            : '-';
+        const expectedSnowText = zone.expected_new_snow_cm
+            ? `${zone.expected_new_snow_cm[0]}-${zone.expected_new_snow_cm[1]}cm`
+            : '-';
+
+        const hazardsHtml = zone.hazards?.length > 0
+            ? `<div class="zone-hazards">${zone.hazards.map(h => `<span class="hazard-tag">${formatHazard(h)}</span>`).join('')}</div>`
+            : '';
+
+        return `
+            <div class="avalanche-zone">
+                <div class="zone-header">
+                    <span class="zone-label">${label}</span>
+                    <span class="zone-risk" style="background-color: ${zoneColor}; color: ${zoneTextColor};">${zoneLevel}</span>
+                </div>
+                <div class="zone-snow">
+                    <span>${t.freshSnow}: ${freshSnowText}</span>
+                    <span>${t.expectedSnow}: ${expectedSnowText}</span>
+                </div>
+                ${hazardsHtml}
+            </div>
+        `;
+    };
+
+    // Get validity info
+    const isValid = isBulletinValid(avalancheBulletinData);
+    const validTo = new Date(avalancheBulletinData.bulletin.valid_to);
+    const locale = lang === 'ro' ? 'ro-RO' : (lang === 'hu' ? 'hu-HU' : 'en-US');
+    const validToStr = validTo.toLocaleDateString(locale, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    // Calculate time remaining
+    const now = new Date();
+    const hoursRemaining = Math.max(0, Math.round((validTo - now) / (1000 * 60 * 60)));
+    const timeRemainingText = isValid
+        ? (hoursRemaining > 24 ? `${Math.round(hoursRemaining / 24)}d` : `${hoursRemaining}h`)
+        : '';
+
+    const validityHtml = `
+        <div class="avalanche-validity">
+            <span class="official-tag">🏛️ Meteo Romania</span>
+            <span class="validity-status ${isValid ? 'valid' : 'expired'}">
+                ${isValid
+                    ? `${t.validUntil}: ${validToStr} (${timeRemainingText} ${lang === 'ro' ? 'rămase' : 'left'})`
+                    : `⚠️ ${t.expired}`}
+            </span>
+        </div>
+    `;
+
+    return `
+        <div class="avalanche-detail" style="border-left: 4px solid ${color};">
+            <div class="avalanche-detail-header">
+                <span class="detail-icon">⚠️</span>
+                <span class="detail-title">${t.avalancheBulletin}</span>
+            </div>
+            ${validityHtml}
+            ${stationsHtml}
+            <div class="avalanche-zones">
+                ${createZoneHtml(above1800, t.above1800m)}
+                ${createZoneHtml(below1800, t.below1800m)}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// SPECIAL EVENTS (temporary - remove after event date)
+// ============================================
+const SPECIAL_EVENTS = [
+    {
+        mountainRange: 'Muntii Apuseni',
+        title: 'Cupa Vlădeasa Schi Alpinism / Cupa Memorială "Ioan Potra"',
+        date: '2026-02-21',
+        time: '08:00 - 16:00',
+        link: 'https://www.facebook.com/events/4206924982898979',
+        emoji: '🏆'
+    }
+];
+
+/**
+ * Get special event for a mountain range (if any active today or upcoming)
+ */
+function getSpecialEvent(mountainRange) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const event of SPECIAL_EVENTS) {
+        if (event.mountainRange.toLowerCase() !== mountainRange.toLowerCase()) continue;
+
+        const eventDate = new Date(event.date);
+        eventDate.setHours(0, 0, 0, 0);
+
+        // Show event if it's today or in the next 3 days
+        const daysDiff = (eventDate - today) / (1000 * 60 * 60 * 24);
+        if (daysDiff >= 0 && daysDiff <= 3) {
+            return event;
+        }
+    }
+    return null;
+}
+
+/**
+ * Create special event banner HTML
+ */
+function createSpecialEventHtml(event) {
+    if (!event) return '';
+
+    const eventDate = new Date(event.date);
+    const dateStr = eventDate.toLocaleDateString(currentLanguage === 'ro' ? 'ro-RO' : 'en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    return `
+        <div class="special-event-banner">
+            <div class="event-badge">${event.emoji} EVENT</div>
+            <div class="event-content">
+                <div class="event-title">${event.title}</div>
+                <div class="event-details">
+                    <span class="event-date">📅 ${dateStr}</span>
+                    <span class="event-time">⏰ ${event.time}</span>
+                </div>
+            </div>
+            <a href="${event.link}" target="_blank" rel="noopener" class="event-link"
+               onclick="trackEvent('special_event_click', { event_name: '${event.title}' })">
+                Details →
+            </a>
+        </div>
+    `;
+}
+
+/**
+ * Inject avalanche data into mountain range sections
+ */
+function injectAvalancheDataIntoPage() {
+    if (!avalancheBulletinData) return;
+
+    // Add detailed avalanche info after each mountain range header
+    document.querySelectorAll('.mountain-range-section').forEach(section => {
+        const header = section.querySelector('h2');
+        if (!header) return;
+
+        const mountainRange = header.textContent.trim();
+
+        // Add special event banner if applicable
+        const existingEvent = section.querySelector('.special-event-banner');
+        if (!existingEvent) {
+            const event = getSpecialEvent(mountainRange);
+            if (event) {
+                header.insertAdjacentHTML('afterend', createSpecialEventHtml(event));
+            }
+        }
+
+        // Add detailed avalanche info after the range header (and after event if present)
+        const existingDetail = section.querySelector('.avalanche-detail');
+        if (!existingDetail) {
+            const detailHtml = createAvalancheDetailHtml(mountainRange);
+            if (detailHtml) {
+                const eventBanner = section.querySelector('.special-event-banner');
+                if (eventBanner) {
+                    eventBanner.insertAdjacentHTML('afterend', detailHtml);
+                } else {
+                    header.insertAdjacentHTML('afterend', detailHtml);
+                }
+            }
+        }
+    });
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
     initLanguage();
@@ -3226,6 +3720,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Setup sticky navigation
     initStickyNav();
+
+    // Fetch avalanche bulletin in background
+    fetchAvalancheBulletin().then(() => {
+        // Inject after page loads
+        setTimeout(injectAvalancheDataIntoPage, 1000);
+    });
 
     // Auto-select tomorrow if available, otherwise today
     const tomorrow = getTomorrowDate();

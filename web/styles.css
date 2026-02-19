@@ -1720,3 +1720,470 @@ body {
         min-height: 44px;
     }
 }
+
+/* ============================================
+   AVALANCHE BULLETIN STYLES
+   ============================================ */
+
+/* Bulletin Header */
+.avalanche-bulletin-header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border: 1px solid #475569;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.avalanche-bulletin-header.expired {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, #1e293b 0%, #3f1e1e 100%);
+}
+
+/* Official Badge */
+.bulletin-official {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.official-badge {
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.official-source {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.bulletin-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.bulletin-icon {
+    font-size: 1.4em;
+}
+
+.bulletin-title h3 {
+    font-size: 1.15em;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* Validity Details */
+.bulletin-validity-details {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.validity-period {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.validity-label {
+    color: var(--text-muted);
+    font-size: 0.85em;
+}
+
+.validity-dates {
+    color: var(--text-primary);
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.bulletin-status {
+    font-size: 0.85em;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.bulletin-status.valid {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.bulletin-status.expired {
+    background: rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.bulletin-source {
+    font-size: 0.85em;
+}
+
+.bulletin-source a {
+    color: var(--primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bulletin-source a:hover {
+    text-decoration: underline;
+}
+
+.bulletin-source a:hover {
+    text-decoration: underline;
+}
+
+/* Avalanche Risk Badge (in mountain range headers) */
+.avalanche-risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7em;
+    font-weight: 700;
+    margin-left: 12px;
+    vertical-align: middle;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.avalanche-risk-badge .risk-level {
+    font-size: 1.1em;
+    min-width: 18px;
+    text-align: center;
+}
+
+.avalanche-risk-badge .risk-label {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Special Event Banner */
+.special-event-banner {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+    border: 2px solid #3b82f6;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    animation: event-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes event-glow {
+    0% { box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+    100% { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.5); }
+}
+
+.event-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.event-content {
+    flex: 1;
+    min-width: 200px;
+}
+
+.event-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95em;
+    margin-bottom: 4px;
+}
+
+.event-details {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+}
+
+.event-date, .event-time {
+    white-space: nowrap;
+}
+
+.event-link {
+    background: #3b82f6;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85em;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.event-link:hover {
+    background: #2563eb;
+}
+
+/* Avalanche Detail Section */
+.avalanche-detail {
+    background: rgba(30, 41, 59, 0.8);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 12px 0 20px 0;
+}
+
+.avalanche-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.detail-icon {
+    font-size: 1.2em;
+}
+
+.detail-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95em;
+}
+
+/* Avalanche Validity in Detail Section */
+.avalanche-validity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    font-size: 0.85em;
+}
+
+.official-tag {
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 600;
+}
+
+.validity-status {
+    font-weight: 500;
+}
+
+.validity-status.valid {
+    color: #10b981;
+}
+
+.validity-status.expired {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Snow Stations */
+.snow-stations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.snow-stations .station {
+    background: rgba(51, 65, 85, 0.6);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    color: var(--text-secondary);
+}
+
+/* Avalanche Zones */
+.avalanche-zones {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.avalanche-zone {
+    background: rgba(51, 65, 85, 0.4);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.zone-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.zone-label {
+    font-weight: 600;
+    font-size: 0.85em;
+    color: var(--text-primary);
+}
+
+.zone-risk {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.85em;
+}
+
+.zone-snow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+/* Hazard Tags */
+.zone-hazards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.hazard-tag {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    font-weight: 500;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    /* Special Event Banner Mobile */
+    .special-event-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .event-content {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .event-title {
+        font-size: 0.9em;
+    }
+
+    .event-details {
+        gap: 10px;
+        font-size: 0.8em;
+    }
+
+    .event-link {
+        width: 100%;
+        text-align: center;
+        padding: 10px 16px;
+    }
+
+    .avalanche-bulletin-header {
+        padding: 12px 14px;
+        margin-bottom: 16px;
+    }
+
+    .bulletin-official {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .official-badge {
+        font-size: 0.7em;
+    }
+
+    .official-source {
+        font-size: 0.8em;
+    }
+
+    .bulletin-title {
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .bulletin-title h3 {
+        font-size: 1em;
+    }
+
+    .bulletin-validity-details {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .validity-dates {
+        font-size: 0.85em;
+    }
+
+    .bulletin-status {
+        font-size: 0.8em;
+    }
+
+    .bulletin-source {
+        font-size: 0.8em;
+    }
+
+    .avalanche-risk-badge {
+        font-size: 0.65em;
+        padding: 3px 8px;
+        margin-left: 8px;
+    }
+
+    .avalanche-detail {
+        padding: 10px 12px;
+    }
+
+    .avalanche-zones {
+        grid-template-columns: 1fr;
+    }
+
+    .snow-stations {
+        gap: 6px;
+    }
+
+    .snow-stations .station {
+        font-size: 0.75em;
+        padding: 3px 8px;
+    }
+}
